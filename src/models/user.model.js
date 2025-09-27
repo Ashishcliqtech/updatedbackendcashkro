@@ -25,22 +25,20 @@ const UserSchema = new mongoose.Schema({
   },
   referralCode: {
     type: String,
+    unique: true,
+    sparse: true, // Allows multiple null values
   },
-  totalCashback: {
-    type: Number,
-    default: 0,
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
   },
-  availableCashback: {
-    type: Number,
-    default: 0,
-  },
-  pendingCashback: {
-    type: Number,
-    default: 0,
+  wallet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet',
   },
   isVerified: {
     type: Boolean,
-    default: true, // Assuming verification happens with OTP
+    default: false,
   },
   isActive: {
     type: Boolean,

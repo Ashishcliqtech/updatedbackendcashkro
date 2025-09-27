@@ -1,13 +1,12 @@
-// src/controllers/auth.controller.js
-
 const User = require('../models/user.model');
+const Wallet = require('../models/wallet.model');
 const redisClient = require('../config/redis');
 const { sendOtpEmail, sendPasswordResetEmail } = require('../utils/email');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const jwt =require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
-// Renamed from sendOtp to signup
 exports.signup = async (req, res) => {
   const { name, email, phone, password, referralCode } = req.body;
 
@@ -26,7 +25,7 @@ exports.signup = async (req, res) => {
 
     await sendOtpEmail(email, otp);
 
-    res.status(200).json({ msg: 'OTP sent to email' });
+    res.status(200).json({ msg: 'OTP has been sent to your email.' });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -51,23 +50,35 @@ exports.verifyOtpAndSignup = async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
+    
     const newUser = new User({
       name,
       email,
       phone,
       password: hashedPassword,
-      referralCode,
-      // The 'role' will default to 'user' as defined in the model
+      referralCode: uuidv4(),
+      isVerified: true
     });
+    
+    if (referralCode) {
+        const referringUser = await User.findOne({ referralCode });
+        if (referringUser) {
+            newUser.referredBy = referringUser._id;
+        }
+    }
 
+    const newWallet = new Wallet({ user: newUser._id });
+    await newWallet.save();
+
+    newUser.wallet = newWallet._id;
     await newUser.save();
+
     await redisClient.del(email);
 
     const payload = {
       user: {
         id: newUser.id,
-        role: newUser.role, // <-- UPDATED: Add role to payload
+        role: newUser.role,
       },
     };
 
@@ -83,80 +94,80 @@ exports.verifyOtpAndSignup = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    let user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
+    const { email, password } = req.body;
+  
+    try {
+      let user = await User.findOne({ email });
+      if (!user) {
+        return res.status(400).json({ msg: 'Invalid credentials' });
+      }
+  
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ msg: 'Invalid credentials' });
+      }
+  
+      const payload = {
+        user: {
+          id: user.id,
+          role: user.role,
+        },
+      };
+  
+      const token = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN,
+      });
+  
+      res.json({ token });
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server error');
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
+  };
+  
+  exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+  
+    try {
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ msg: 'User not found' });
+      }
+  
+      const payload = {
+        user: {
+          id: user.id,
+        },
+      };
+  
+      const token = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: '15m',
+      });
+  
+      await sendPasswordResetEmail(email, token);
+  
+      res.status(200).json({ msg: 'Password reset email sent' });
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server error');
     }
-
-    const payload = {
-      user: {
-        id: user.id,
-        role: user.role, // <-- UPDATED: Add role to payload
-      },
-    };
-
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
-    });
-
-    res.json({ token });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
-  }
-};
-
-exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ msg: 'User not found' });
+  };
+  
+  exports.resetPassword = async (req, res) => {
+    const { token, password } = req.body;
+  
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const userId = decoded.user.id;
+  
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+  
+      await User.findByIdAndUpdate(userId, { password: hashedPassword });
+  
+      res.status(200).json({ msg: 'Password has been reset successfully.' });
+    } catch (err) {
+      console.error(err.message);
+      res.status(400).json({ msg: 'Invalid or expired token' });
     }
-
-    const payload = {
-      user: {
-        id: user.id,
-      },
-    };
-
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: '15m',
-    });
-
-    await sendPasswordResetEmail(email, token);
-
-    res.status(200).json({ msg: 'Password reset email sent' });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
-  }
-};
-
-exports.resetPassword = async (req, res) => {
-  const { token, password } = req.body;
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.user.id;
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    await User.findByIdAndUpdate(userId, { password: hashedPassword });
-
-    res.status(200).json({ msg: 'Password reset successful' });
-  } catch (err) {
-    console.error(err.message);
-    res.status(400).json({ msg: 'Invalid or expired token' });
-  }
-};
+  };

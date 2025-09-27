@@ -2,7 +2,13 @@ const Store = require('../models/store.model');
 
 exports.getStores = async (req, res) => {
   try {
-    const stores = await Store.find().populate('category');
+    const { category, popular } = req.query;
+    const query = {};
+
+    if (category) query.category = category;
+    if (popular) query.isPopular = popular === 'true';
+
+    const stores = await Store.find(query).populate('category');
     res.json({ stores });
   } catch (err) {
     console.error(err.message);

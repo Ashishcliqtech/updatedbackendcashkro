@@ -2,8 +2,28 @@ const Offer = require('../models/offer.model');
 
 exports.getOffers = async (req, res) => {
   try {
-    const offers = await Offer.find().populate('store').populate('category');
-    res.json({ offers });
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const { store, category, type } = req.query;
+
+    const query = {};
+    if (store) query.store = store;
+    if (category) query.category = category;
+    if (type) query.offerType = type;
+
+    const offers = await Offer.find(query)
+      .populate('store')
+      .populate('category')
+      .skip((page - 1) * limit)
+      .limit(limit);
+      
+    const totalOffers = await Offer.countDocuments(query);
+
+    res.json({
+        offers,
+        totalPages: Math.ceil(totalOffers / limit),
+        currentPage: page
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

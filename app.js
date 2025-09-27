@@ -18,5 +18,8 @@ app.use('/api/content', require('./src/routes/content.routes'));
 app.use('/api/stores', require('./src/routes/stores.routes'));
 app.use('/api/offers', require('./src/routes/offers.routes'));
 app.use('/api/categories', require('./src/routes/categories.routes'));
+app.use('/api/wallet', require('./src/routes/wallet.routes'));
+app.use('/api/admin', require('./src/routes/admin.routes'));
+
 
 module.exports = app;
