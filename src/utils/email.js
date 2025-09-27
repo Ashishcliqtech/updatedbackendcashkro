@@ -1,28 +1,20 @@
-const nodemailer = require('nodemailer');
+// src/utils/email.js
+
+const { Resend } = require('resend');
 require('dotenv').config();
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 465,
-  secure: true, // true for 465, false for other ports
-  auth: {
-    user: process.env.BREVO_SMTP_LOGIN,
-    pass: process.env.BREVO_SMTP_KEY,
-  },
-});
+// Initialize Resend with your API key from environment variables
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendOtpEmail = async (to, otp) => {
-  const mailOptions = {
-    // This is the "from" address that users will see
-    from: `"${process.env.BREVO_SENDER_NAME}" <${process.env.BREVO_SENDER_EMAIL}>`,
-    to,
-    subject: 'Your OTP for SaveMoney',
-    text: `Your OTP is: ${otp}`,
-    html: `<p>Your OTP is: <strong>${otp}</strong></p>`,
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
+    await resend.emails.send({
+      // IMPORTANT: This 'from' address MUST be from a domain you have verified in Resend.
+      from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
+      to: to,
+      subject: 'Your OTP for SaveMoney',
+      html: `<p>Your OTP is: <strong>${otp}</strong></p>`,
+    });
   } catch (error) {
     console.error('Error sending OTP email:', error);
     throw new Error('Could not send OTP email');
@@ -30,16 +22,14 @@ const sendOtpEmail = async (to, otp) => {
 };
 
 const sendPasswordResetEmail = async (to, token) => {
-  const mailOptions = {
-    from: `"${process.env.BREVO_SENDER_NAME}" <${process.env.BREVO_SENDER_EMAIL}>`,
-    to,
-    subject: 'Password Reset for SaveMoney',
-    text: `Click here to reset your password: ${process.env.FRONTEND_URL}/reset-password?token=${token}`,
-    html: `<p>Click <a href="${process.env.FRONTEND_URL}/reset-password?token=${token}">here</a> to reset your password.</p>`,
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
+    await resend.emails.send({
+      // IMPORTANT: This 'from' address MUST be from a domain you have verified in Resend.
+      from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
+      to: to,
+      subject: 'Password Reset for SaveMoney',
+      html: `<p>Click <a href="${process.env.FRONTEND_URL}/reset-password?token=${token}">here</a> to reset your password.</p>`,
+    });
   } catch (error) {
     console.error('Error sending password reset email:', error);
     throw new Error('Could not send password reset email');
