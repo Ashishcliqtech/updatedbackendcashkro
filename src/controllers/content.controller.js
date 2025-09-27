@@ -24,7 +24,7 @@ exports.createContentSection = async (req, res) => {
       name,
       type,
       status,
-      content,
+      content: JSON.parse(content), // content is sent as stringified JSON
       position,
       devices,
       scheduledDate,
@@ -54,7 +54,19 @@ exports.updateContentSection = async (req, res) => {
       return res.status(404).json({ msg: 'Content section not found' });
     }
 
-    const updateData = { ...req.body, lastModified: Date.now() };
+    const { name, type, status, content, position, devices, scheduledDate } = req.body;
+
+    const updateData = {
+      name,
+      type,
+      status,
+      content: JSON.parse(content),
+      position,
+      devices,
+      scheduledDate,
+      lastModified: Date.now(),
+    };
+
 
     if (req.file) {
       if (!updateData.content) {
