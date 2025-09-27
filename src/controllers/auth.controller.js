@@ -1,3 +1,5 @@
+// src/controllers/auth.controller.js
+
 const User = require('../models/user.model');
 const redisClient = require('../config/redis');
 const { sendOtpEmail, sendPasswordResetEmail } = require('../utils/email');
@@ -56,6 +58,7 @@ exports.verifyOtpAndSignup = async (req, res) => {
       phone,
       password: hashedPassword,
       referralCode,
+      // The 'role' will default to 'user' as defined in the model
     });
 
     await newUser.save();
@@ -64,6 +67,7 @@ exports.verifyOtpAndSignup = async (req, res) => {
     const payload = {
       user: {
         id: newUser.id,
+        role: newUser.role, // <-- UPDATED: Add role to payload
       },
     };
 
@@ -95,6 +99,7 @@ exports.login = async (req, res) => {
     const payload = {
       user: {
         id: user.id,
+        role: user.role, // <-- UPDATED: Add role to payload
       },
     };
 
