@@ -18,9 +18,23 @@ exports.getContentSections = async (req, res) => {
 // @access  Admin
 exports.createContentSection = async (req, res) => {
   try {
-    const newSection = new Content({
-      ...req.body,
-    });
+    const { name, type, status, content, position, devices, scheduledDate } = req.body;
+
+    const newSectionData = {
+      name,
+      type,
+      status,
+      content,
+      position,
+      devices,
+      scheduledDate,
+    };
+
+    if (req.file) {
+      newSectionData.content.imageUrl = req.file.path;
+    }
+
+    const newSection = new Content(newSectionData);
     const section = await newSection.save();
     res.json(section);
   } catch (err) {
@@ -28,6 +42,7 @@ exports.createContentSection = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
+
 
 // @route   PUT /api/content/:id
 // @desc    Update a content section
@@ -39,9 +54,18 @@ exports.updateContentSection = async (req, res) => {
       return res.status(404).json({ msg: 'Content section not found' });
     }
 
+    const updateData = { ...req.body, lastModified: Date.now() };
+
+    if (req.file) {
+      if (!updateData.content) {
+        updateData.content = {};
+      }
+      updateData.content.imageUrl = req.file.path;
+    }
+
     section = await Content.findByIdAndUpdate(
       req.params.id,
-      { $set: { ...req.body, lastModified: Date.now() } },
+      { $set: updateData },
       { new: true }
     );
 
