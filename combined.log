@@ -1,3 +1,12 @@
 {"level":"info","message":"Server started on port 5000","service":"cashback-app","timestamp":"2025-09-29 02:55:13"}
 {"level":"info","message":"✅ Redis connected successfully","service":"cashback-app","timestamp":"2025-09-29 02:55:14"}
 {"level":"info","message":"MongoDB connected","service":"cashback-app","timestamp":"2025-09-29 02:55:19"}
+{"level":"info","message":"Server started on port 5000","service":"cashback-app","timestamp":"2025-09-29 03:28:52"}
+{"level":"info","message":"✅ Redis connected successfully","service":"cashback-app","timestamp":"2025-09-29 03:28:52"}
+{"level":"info","message":"MongoDB connected","service":"cashback-app","timestamp":"2025-09-29 03:28:52"}
+{"error":"Illegal arguments: undefined, string","level":"error","message":"Error in sendOtp:","service":"cashback-app","stack":"Error: Illegal arguments: undefined, string\n    at _async (/home/ashish-kumar/project/updatedbackendcashkro/node_modules/bcryptjs/dist/bcrypt.js:214:46)\n    at /home/ashish-kumar/project/updatedbackendcashkro/node_modules/bcryptjs/dist/bcrypt.js:223:17\n    at new Promise (<anonymous>)\n    at bcrypt.hash (/home/ashish-kumar/project/updatedbackendcashkro/node_modules/bcryptjs/dist/bcrypt.js:222:20)\n    at exports.sendOtp (/home/ashish-kumar/project/updatedbackendcashkro/src/controllers/auth.controller.js:25:41)","timestamp":"2025-09-29 03:30:45"}
+{"level":"info","message":"Server started on port 5000","service":"cashback-app","timestamp":"2025-09-29 03:44:47"}
+{"level":"info","message":"✅ Redis connected successfully","service":"cashback-app","timestamp":"2025-09-29 03:44:47"}
+{"level":"info","message":"MongoDB connected","service":"cashback-app","timestamp":"2025-09-29 03:44:47"}
+{"level":"info","message":"OTP sent to email: test@example.com","service":"cashback-app","timestamp":"2025-09-29 03:45:35"}
+{"level":"info","message":"User logged in successfully: ranjan84048@gmail.com","service":"cashback-app","timestamp":"2025-09-29 03:46:28"}
