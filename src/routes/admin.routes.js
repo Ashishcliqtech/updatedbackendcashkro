@@ -1,33 +1,41 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin.controller');
+const categoriesController = require('../controllers/categories.controller');
+const contentController = require('../controllers/content.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const adminMiddleware = require('../middleware/admin.middleware');
 const upload = require('../middleware/upload.middleware');
 
-// User Management
-router.get('/users', authMiddleware, adminMiddleware, adminController.getAllUsers);
-router.get('/users/:id', authMiddleware, adminMiddleware, adminController.getUserById);
-router.put('/users/:id', authMiddleware, adminMiddleware, adminController.updateUser);
+// All routes in this file are protected by auth and admin middleware
+router.use(authMiddleware, adminMiddleware);
 
-// Store Management
-router.post('/stores', authMiddleware, adminMiddleware, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), adminController.createStore);
-router.put('/stores/:id', authMiddleware, adminMiddleware, adminController.updateStore);
-router.delete('/stores/:id', authMiddleware, adminMiddleware, adminController.deleteStore);
+// --- User Management ---
+router.get('/users', adminController.getAllUsers);
+router.get('/users/:id', adminController.getUserById);
+router.put('/users/:id', adminController.updateUser);
+router.delete('/users/:id', adminController.deleteUser);
 
-// Offer Management
-router.post('/offers', authMiddleware, adminMiddleware, upload.single('imageUrl'), adminController.createOffer);
-router.put('/offers/:id', authMiddleware, adminMiddleware, adminController.updateOffer);
-router.delete('/offers/:id', authMiddleware, adminMiddleware, adminController.deleteOffer);
+// --- Store Management ---
+router.post('/stores', upload.single('logo'), adminController.createStore);
+router.put('/stores/:id', upload.single('logo'), adminController.updateStore);
+router.delete('/stores/:id', adminController.deleteStore);
 
-// Category Management
-router.post('/categories', authMiddleware, adminMiddleware, adminController.createCategory);
-router.put('/categories/:id', authMiddleware, adminMiddleware, adminController.updateCategory);
-router.delete('/categories/:id', authMiddleware, adminMiddleware, adminController.deleteCategory);
+// --- Offer Management ---
+router.post('/offers', upload.single('imageUrl'), adminController.createOffer);
+router.put('/offers/:id', upload.single('imageUrl'), adminController.updateOffer);
+router.delete('/offers/:id', adminController.deleteOffer);
 
-// Withdrawal Management
-router.get('/withdrawals', authMiddleware, adminMiddleware, adminController.getWithdrawals);
-router.post('/withdrawals/:transactionId/approve', authMiddleware, adminMiddleware, adminController.approveWithdrawal);
-router.post('/withdrawals/:transactionId/reject', authMiddleware, adminMiddleware, adminController.rejectWithdrawal);
+// --- Category Management ---
+router.post('/categories', categoriesController.createCategory);
+router.put('/categories/:id', categoriesController.updateCategory);
+router.delete('/categories/:id', categoriesController.deleteCategory);
+
+// --- Content Management ---
+router.post('/content', upload.single('imageUrl'), contentController.createContent);
+router.put('/content/:id', upload.single('imageUrl'), contentController.updateContent);
+router.delete('/content/:id', contentController.deleteContent);
+
 
 module.exports = router;
+

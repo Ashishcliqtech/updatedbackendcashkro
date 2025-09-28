@@ -5,7 +5,7 @@ const cloudinary = require('../config/cloudinary');
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'savemoney',
+    folder: 'cashback_app',
     allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'webp'],
   },
 });

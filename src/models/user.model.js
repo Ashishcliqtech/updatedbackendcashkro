@@ -13,6 +13,7 @@ const UserSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true,
+    unique: true,
   },
   password: {
     type: String,
@@ -26,23 +27,11 @@ const UserSchema = new mongoose.Schema({
   referralCode: {
     type: String,
     unique: true,
-    sparse: true, // Allows multiple null values
+    sparse: true, 
   },
   referredBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-  },
-  wallet: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Wallet',
-  },
-  isVerified: {
-    type: Boolean,
-    default: false,
-  },
-  isActive: {
-    type: Boolean,
-    default: true,
   },
   createdAt: {
     type: Date,

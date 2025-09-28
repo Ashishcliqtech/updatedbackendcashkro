@@ -4,22 +4,10 @@ const CategorySchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-  },
-  icon: {
-    type: String,
-    required: true,
+    unique: true,
   },
   description: {
     type: String,
-    required: true,
-  },
-  storeCount: {
-    type: Number,
-    default: 0,
-  },
-  offerCount: {
-    type: Number,
-    default: 0,
   },
 });
 

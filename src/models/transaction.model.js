@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const TransactionSchema = new mongoose.Schema({
-  wallet: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Wallet',
+    ref: 'User',
     required: true,
   },
   amount: {
@@ -12,21 +12,16 @@ const TransactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['credit', 'debit', 'withdrawal_request'],
+    enum: ['credit', 'debit'],
     required: true,
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'failed', 'completed'],
+    enum: ['pending', 'confirmed', 'failed'],
     required: true,
   },
   description: {
     type: String,
-    required: true,
-  },
-  offer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Offer',
   },
   createdAt: {
     type: Date,

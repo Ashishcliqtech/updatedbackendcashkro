@@ -9,18 +9,6 @@ const OfferSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  store: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Store',
-    required: true,
-  },
-  cashbackRate: {
-    type: Number,
-    required: true,
-  },
-  originalPrice: Number,
-  discountedPrice: Number,
-  couponCode: String,
   offerType: {
     type: String,
     enum: ['cashback', 'coupon', 'deal'],
@@ -31,24 +19,41 @@ const OfferSchema = new mongoose.Schema({
     ref: 'Category',
     required: true,
   },
-  expiryDate: {
-    type: Date,
-    required: true,
+  isTrending: {
+    type: Boolean,
+    default: false,
   },
   isExclusive: {
     type: Boolean,
     default: false,
   },
-  isTrending: {
+  isFeatured: {
     type: Boolean,
     default: false,
   },
-  imageUrl: {
+  cashbackRate: {
+    type: Number,
+  },
+  couponCode: {
     type: String,
+  },
+  store: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Store',
     required: true,
   },
-  terms: [String],
-  minOrderValue: Number,
+  imageUrl: {
+    type: String,
+  },
+  expiryDate: {
+    type: Date,
+  },
+  originalPrice: {
+    type: Number,
+  },
+  discountedPrice: {
+    type: Number,
+  },
 });
 
 module.exports = mongoose.model('Offer', OfferSchema);

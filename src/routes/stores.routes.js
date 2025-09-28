@@ -1,21 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const storesController = require('../controllers/stores.controller');
-const authMiddleware = require('../middleware/auth.middleware');
-const adminMiddleware = require('../middleware/admin.middleware');
-const upload = require('../middleware/upload.middleware');
 
+// Public routes
 router.get('/', storesController.getStores);
-router.get('/:id', storesController.getStore);
-router.post(
-  '/',
-  authMiddleware,
-  adminMiddleware,
-  upload.fields([
-    { name: 'logo', maxCount: 1 },
-    { name: 'banner', maxCount: 1 },
-  ]),
-  storesController.createStore
-);
+router.get('/popular', storesController.getPopularStores);
+router.get('/featured', storesController.getFeaturedStores);
+router.get('/search', storesController.searchStores);
+router.get('/:id', storesController.getStoreById);
+
+// Admin routes for CUD operations are in admin.routes.js
 
 module.exports = router;

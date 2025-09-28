@@ -1,89 +1,65 @@
-const Content = require('../models/content.model');
+const ContentSection = require('../models/content.model');
+const logger = require('../utils/logger');
 
 // @route   GET /api/content
-// @desc    Get all content sections
+// @desc    Get all content sections (can filter by page)
 // @access  Public
-exports.getContentSections = async (req, res) => {
+exports.getAllContent = async (req, res) => {
   try {
-    const sections = await Content.find({ status: 'active' }).sort({ position: 1 });
-    res.json(sections);
+    const { page } = req.query;
+    const query = page ? { page } : {};
+    const content = await ContentSection.find(query);
+    res.json(content);
   } catch (err) {
-    console.error(err.message);
+    logger.error('Error in getAllContent:', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };
 
 // @route   POST /api/content
-// @desc    Create a content section
+// @desc    Create a new content section
 // @access  Admin
-exports.createContentSection = async (req, res) => {
+exports.createContent = async (req, res) => {
+  const { title, content, page } = req.body;
   try {
-    const { name, type, status, content, position, devices, scheduledDate } = req.body;
-
-    const newSectionData = {
-      name,
-      type,
-      status,
-      content: JSON.parse(content), // content is sent as stringified JSON
-      position,
-      devices,
-      scheduledDate,
-    };
-
-    if (req.file) {
-      newSectionData.content.imageUrl = req.file.path;
-    }
-
-    const newSection = new Content(newSectionData);
-    const section = await newSection.save();
-    res.json(section);
+    const newContentSection = new ContentSection({
+      title,
+      content,
+      page,
+      imageUrl: req.file ? req.file.path : undefined,
+    });
+    const savedContent = await newContentSection.save();
+    res.status(201).json(savedContent);
   } catch (err) {
-    console.error(err.message);
+    logger.error('Error in createContent:', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };
 
-
 // @route   PUT /api/content/:id
 // @desc    Update a content section
 // @access  Admin
-exports.updateContentSection = async (req, res) => {
+exports.updateContent = async (req, res) => {
+  const { title, content, page } = req.body;
   try {
-    let section = await Content.findById(req.params.id);
+    let section = await ContentSection.findById(req.params.id);
     if (!section) {
       return res.status(404).json({ msg: 'Content section not found' });
     }
-
-    const { name, type, status, content, position, devices, scheduledDate } = req.body;
-
-    const updateData = {
-      name,
-      type,
-      status,
-      content: JSON.parse(content),
-      position,
-      devices,
-      scheduledDate,
-      lastModified: Date.now(),
-    };
-
-
+    
+    const updateData = { title, content, page };
     if (req.file) {
-      if (!updateData.content) {
-        updateData.content = {};
-      }
-      updateData.content.imageUrl = req.file.path;
+        updateData.imageUrl = req.file.path;
     }
 
-    section = await Content.findByIdAndUpdate(
-      req.params.id,
-      { $set: updateData },
-      { new: true }
+    section = await ContentSection.findByIdAndUpdate(
+        req.params.id,
+        { $set: updateData },
+        { new: true }
     );
-
     res.json(section);
   } catch (err) {
-    console.error(err.message);
+    logger.error('Error in updateContent:', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };
@@ -91,17 +67,17 @@ exports.updateContentSection = async (req, res) => {
 // @route   DELETE /api/content/:id
 // @desc    Delete a content section
 // @access  Admin
-exports.deleteContentSection = async (req, res) => {
+exports.deleteContent = async (req, res) => {
   try {
-    const section = await Content.findById(req.params.id);
+    const section = await ContentSection.findById(req.params.id);
     if (!section) {
       return res.status(404).json({ msg: 'Content section not found' });
     }
-
-    await Content.findByIdAndRemove(req.params.id);
+    await section.deleteOne();
     res.json({ msg: 'Content section removed' });
   } catch (err) {
-    console.error(err.message);
+    logger.error('Error in deleteContent:', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };
+

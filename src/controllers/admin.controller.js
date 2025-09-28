@@ -1,191 +1,191 @@
 const User = require('../models/user.model');
 const Store = require('../models/store.model');
 const Offer = require('../models/offer.model');
-const Category = require('../models/category.model');
-const Transaction = require('../models/transaction.model');
+const logger = require('../utils/logger');
 const Wallet = require('../models/wallet.model');
+const Referral = require('../models/referral.model');
+const Transaction = require('../models/transaction.model');
 
+// --- User Management ---
 
-// User Management
+// @route   GET /api/admin/users
+// @desc    Get all users
+// @access  Admin
 exports.getAllUsers = async (req, res) => {
     try {
         const users = await User.find().select('-password');
         res.json(users);
     } catch (err) {
+        logger.error('Error in getAllUsers (admin):', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
 
+// @route   GET /api/admin/users/:id
+// @desc    Get a single user by ID
+// @access  Admin
 exports.getUserById = async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-password');
-        if (!user) return res.status(404).json({ msg: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
         res.json(user);
     } catch (err) {
+        logger.error('Error in getUserById (admin):', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
 
+// @route   PUT /api/admin/users/:id
+// @desc    Update a user's role or status
+// @access  Admin
 exports.updateUser = async (req, res) => {
     try {
-        const { role, isActive } = req.body;
-        const user = await User.findByIdAndUpdate(req.params.id, { role, isActive }, { new: true }).select('-password');
-        if (!user) return res.status(404).json({ msg: 'User not found' });
+        const { role } = req.body;
+        const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select('-password');
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
         res.json(user);
     } catch (err) {
+        logger.error('Error in updateUser (admin):', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
 
-// Store Management
-exports.createStore = async (req, res) => {
+// @route   DELETE /api/admin/users/:id
+// @desc    Delete a user
+// @access  Admin
+exports.deleteUser = async (req, res) => {
     try {
-        // Implementation from stores.controller.js can be moved or called here
-        res.status(501).json({ msg: 'Not implemented' });
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
+        // Also delete associated data
+        await Wallet.deleteOne({ user: req.params.id });
+        await Referral.deleteOne({ user: req.params.id });
+        await Transaction.deleteMany({ user: req.params.id });
+        await user.deleteOne();
+        res.json({ msg: 'User and all associated data removed' });
     } catch (err) {
+        logger.error('Error in deleteUser (admin):', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
 
+
+// --- Store Management ---
+
+// @route   POST /api/admin/stores
+// @desc    Create a new store
+// @access  Admin
+exports.createStore = async (req, res) => {
+  const { name, description, category, url, isPopular, isFeatured } = req.body;
+  try {
+    const newStore = new Store({
+      name,
+      description,
+      category,
+      url,
+      isPopular,
+      isFeatured,
+      logo: req.file ? req.file.path : undefined,
+    });
+    const store = await newStore.save();
+    res.status(201).json(store);
+  } catch (err) {
+    logger.error('Error in createStore (admin):', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
+};
+
+// @route   PUT /api/admin/stores/:id
+// @desc    Update a store
+// @access  Admin
 exports.updateStore = async (req, res) => {
-     try {
-        const store = await Store.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    try {
+        const updateData = { ...req.body };
+        if (req.file) {
+            updateData.logo = req.file.path;
+        }
+        const store = await Store.findByIdAndUpdate(req.params.id, { $set: updateData }, { new: true });
         if (!store) return res.status(404).json({ msg: 'Store not found' });
         res.json(store);
     } catch (err) {
+        logger.error('Error in updateStore (admin):', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
 
+// @route   DELETE /api/admin/stores/:id
+// @desc    Delete a store
+// @access  Admin
 exports.deleteStore = async (req, res) => {
     try {
-        const store = await Store.findByIdAndDelete(req.params.id);
+        const store = await Store.findById(req.params.id);
         if (!store) return res.status(404).json({ msg: 'Store not found' });
-        res.json({ msg: 'Store removed' });
+        
+        await Offer.deleteMany({ store: req.params.id });
+        await store.deleteOne();
+        res.json({ msg: 'Store and associated offers removed' });
     } catch (err) {
+        logger.error('Error in deleteStore (admin):', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
 
 
-// Offer Management
+// --- Offer Management ---
+
+// @route   POST /api/admin/offers
+// @desc    Create a new offer
+// @access  Admin
 exports.createOffer = async (req, res) => {
     try {
-        // Implementation from offers.controller.js can be moved or called here
-        res.status(501).json({ msg: 'Not implemented' });
+      const newOffer = new Offer({
+        ...req.body,
+        imageUrl: req.file ? req.file.path : undefined,
+      });
+      const offer = await newOffer.save();
+      res.status(201).json(offer);
     } catch (err) {
-        res.status(500).send('Server Error');
+      logger.error('Error in createOffer (admin):', { error: err.message, stack: err.stack });
+      res.status(500).send('Server Error');
     }
 };
 
+// @route   PUT /api/admin/offers/:id
+// @desc    Update an offer
+// @access  Admin
 exports.updateOffer = async (req, res) => {
     try {
-        const offer = await Offer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updateData = { ...req.body };
+        if (req.file) {
+            updateData.imageUrl = req.file.path;
+        }
+        const offer = await Offer.findByIdAndUpdate(req.params.id, { $set: updateData }, { new: true });
         if (!offer) return res.status(404).json({ msg: 'Offer not found' });
         res.json(offer);
     } catch (err) {
+        logger.error('Error in updateOffer (admin):', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
 
+// @route   DELETE /api/admin/offers/:id
+// @desc    Delete an offer
+// @access  Admin
 exports.deleteOffer = async (req, res) => {
     try {
-        const offer = await Offer.findByIdAndDelete(req.params.id);
+        const offer = await Offer.findById(req.params.id);
         if (!offer) return res.status(404).json({ msg: 'Offer not found' });
+        await offer.deleteOne();
         res.json({ msg: 'Offer removed' });
     } catch (err) {
+        logger.error('Error in deleteOffer (admin):', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
 
-// Category Management
-exports.createCategory = async (req, res) => {
-    try {
-        // Implementation from categories.controller.js can be moved or called here
-        res.status(501).json({ msg: 'Not implemented' });
-    } catch (err) {
-        res.status(500).send('Server Error');
-    }
-};
-
-exports.updateCategory = async (req, res) => {
-    try {
-        const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!category) return res.status(404).json({ msg: 'Category not found' });
-        res.json(category);
-    } catch (err) {
-        res.status(500).send('Server Error');
-    }
-};
-
-exports.deleteCategory = async (req, res) => {
-    try {
-        const category = await Category.findByIdAndDelete(req.params.id);
-        if (!category) return res.status(404).json({ msg: 'Category not found' });
-        res.json({ msg: 'Category removed' });
-    } catch (err) {
-        res.status(500).send('Server Error');
-    }
-};
-
-
-// Withdrawal Management
-exports.getWithdrawals = async (req, res) => {
-    try {
-        const withdrawals = await Transaction.find({ type: 'withdrawal_request', status: 'pending' }).populate({
-            path: 'wallet',
-            populate: {
-                path: 'user',
-                select: 'name email'
-            }
-        });
-        res.json(withdrawals);
-    } catch (err) {
-        res.status(500).send('Server Error');
-    }
-};
-
-exports.approveWithdrawal = async (req, res) => {
-    try {
-        const transaction = await Transaction.findById(req.params.transactionId);
-        if (!transaction || transaction.type !== 'withdrawal_request' || transaction.status !== 'pending') {
-            return res.status(404).json({ msg: 'Withdrawal request not found or already processed' });
-        }
-
-        const wallet = await Wallet.findById(transaction.wallet);
-        if (!wallet) return res.status(404).json({ msg: 'Wallet not found' });
-
-        wallet.pendingCashback -= transaction.amount;
-        await wallet.save();
-
-        transaction.status = 'completed';
-        await transaction.save();
-
-        res.json({ msg: 'Withdrawal approved' });
-    } catch (err) {
-        res.status(500).send('Server Error');
-    }
-};
-
-exports.rejectWithdrawal = async (req, res) => {
-    try {
-        const transaction = await Transaction.findById(req.params.transactionId);
-        if (!transaction || transaction.type !== 'withdrawal_request' || transaction.status !== 'pending') {
-            return res.status(404).json({ msg: 'Withdrawal request not found or already processed' });
-        }
-
-        const wallet = await Wallet.findById(transaction.wallet);
-        if (!wallet) return res.status(404).json({ msg: 'Wallet not found' });
-
-        wallet.pendingCashback -= transaction.amount;
-        wallet.availableCashback += transaction.amount;
-        await wallet.save();
-
-        transaction.status = 'failed'; // Or 'rejected'
-        await transaction.save();
-
-        res.json({ msg: 'Withdrawal rejected' });
-    } catch (err) {
-        res.status(500).send('Server Error');
-    }
-};

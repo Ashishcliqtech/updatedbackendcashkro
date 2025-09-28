@@ -5,17 +5,8 @@ const StoreSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  logo: {
-    type: String,
-    required: true,
-  },
-  banner: String,
   description: {
     type: String,
-    required: true,
-  },
-  cashbackRate: {
-    type: Number,
     required: true,
   },
   category: {
@@ -27,11 +18,15 @@ const StoreSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  totalOffers: {
-    type: Number,
-    default: 0,
+  isFeatured: {
+    type: Boolean,
+    default: false,
   },
-  website: {
+  logo: {
+    type: String,
+    required: true,
+  },
+  url: {
     type: String,
     required: true,
   },

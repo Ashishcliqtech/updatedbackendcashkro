@@ -1,48 +1,20 @@
 const mongoose = require('mongoose');
 
-const ContentSchema = new mongoose.Schema({
-  name: {
+const ContentSectionSchema = new mongoose.Schema({
+  title: {
     type: String,
     required: true,
-  },
-  type: {
-    type: String,
-    enum: ['hero', 'featured', 'highlighted', 'banner', 'testimonial'],
-    required: true,
-  },
-  status: {
-    type: String,
-    enum: ['active', 'inactive', 'scheduled'],
-    default: 'active',
   },
   content: {
-    title: String,
-    subtitle: String,
-    description: String,
-    imageUrl: String,
-    buttonText: String,
-    buttonLink: String,
+    type: Object,
   },
-  position: {
-    type: Number,
-    default: 0,
+  imageUrl: {
+    type: String,
   },
-  devices: {
-    type: [String],
-    enum: ['desktop', 'tablet', 'mobile'],
-    default: ['desktop', 'tablet', 'mobile'],
-  },
-  scheduledDate: {
-    type: Date,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  lastModified: {
-    type: Date,
-    default: Date.now,
+  page: {
+    type: String,
+    required: true, // e.g., 'homepage', 'about'
   },
 });
 
-module.exports = mongoose.model('Content', ContentSchema);
+module.exports = mongoose.model('ContentSection', ContentSectionSchema);

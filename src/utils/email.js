@@ -1,39 +1,37 @@
-// src/utils/email.js
-
 const { Resend } = require('resend');
+const logger = require('./logger');
 require('dotenv').config();
 
-// Initialize Resend with your API key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendOtpEmail = async (to, otp) => {
   try {
     await resend.emails.send({
-      // IMPORTANT: This 'from' address MUST be from a domain you have verified in Resend.
       from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
       to: to,
-      subject: 'Your OTP for SaveMoney',
-      html: `<p>Your OTP is: <strong>${otp}</strong></p>`,
+      subject: 'Your Verification OTP',
+      html: `<p>Your One-Time Password (OTP) is: <strong>${otp}</strong>. It is valid for 5 minutes.</p>`,
     });
   } catch (error) {
-    console.error('Error sending OTP email:', error);
+    logger.error('Error sending OTP email:', { error: error.message, stack: error.stack });
     throw new Error('Could not send OTP email');
   }
 };
 
 const sendPasswordResetEmail = async (to, token) => {
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
   try {
     await resend.emails.send({
-      // IMPORTANT: This 'from' address MUST be from a domain you have verified in Resend.
       from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
       to: to,
-      subject: 'Password Reset for SaveMoney',
-      html: `<p>Click <a href="${process.env.FRONTEND_URL}/reset-password?token=${token}">here</a> to reset your password.</p>`,
+      subject: 'Reset Your Password',
+      html: `<p>You requested a password reset. Click this link to reset your password: <a href="${resetLink}">${resetLink}</a>. This link is valid for 15 minutes.</p>`,
     });
   } catch (error) {
-    console.error('Error sending password reset email:', error);
+    logger.error('Error sending password reset email:', { error: error.message, stack: error.stack });
     throw new Error('Could not send password reset email');
   }
 };
 
 module.exports = { sendOtpEmail, sendPasswordResetEmail };
+

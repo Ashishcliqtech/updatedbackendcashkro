@@ -1,19 +1,21 @@
 const redis = require('redis');
+const logger = require('../utils/logger');
 require('dotenv').config();
 
 const redisClient = redis.createClient({
-  url: process.env.UPSTASH_REDIS_URL, // Use the full URL directly
+  url: process.env.UPSTASH_REDIS_URL,
 });
 
-redisClient.on('error', (err) => console.error('Redis Client Error', err));
+redisClient.on('error', (err) => logger.error('Redis Client Error', err));
 
 (async () => {
   try {
     await redisClient.connect();
-    console.log('✅ Redis connected successfully');
+    logger.info('✅ Redis connected successfully');
   } catch (err) {
-    console.error('❌ Failed to connect to Redis:', err);
+    logger.error('❌ Failed to connect to Redis:', err);
   }
 })();
 
 module.exports = redisClient;
+
