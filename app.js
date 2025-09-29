@@ -20,6 +20,7 @@ app.use('/api/offers', require('./src/routes/offers.routes'));
 app.use('/api/referrals', require('./src/routes/referral.routes'));
 app.use('/api/stores', require('./src/routes/stores.routes'));
 app.use('/api/wallet', require('./src/routes/wallet.routes'));
+app.use('/api/webhook', require('./src/routes/webhook.routes.js'));
 
 // Admin Routes (Optional, can be a separate app or protected area)
 // For this project, we assume admin routes are part of the same app

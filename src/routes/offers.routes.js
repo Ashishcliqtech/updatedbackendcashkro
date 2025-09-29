@@ -10,6 +10,7 @@ router.get('/featured', offersController.getFeaturedOffers);
 router.get('/exclusive', offersController.getExclusiveOffers);
 router.get('/search', offersController.searchOffers);
 router.get('/:id', offersController.getOfferById);
+router.post('/:id/track', authMiddleware, offersController.trackOfferClick);
 
 // Tracking route - can be public or require auth depending on business logic
 router.post('/:id/track', authMiddleware, offersController.trackOfferClick);

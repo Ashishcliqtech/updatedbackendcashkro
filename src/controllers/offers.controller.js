@@ -1,4 +1,5 @@
 const Offer = require('../models/offer.model');
+const Click = require('../models/click.model.js'); 
 const logger = require('../utils/logger');
 
 // @route   GET /api/offers
@@ -128,6 +129,41 @@ exports.trackOfferClick = async (req, res) => {
         // e.g., await Offer.findByIdAndUpdate(req.params.id, { $inc: { clicks: 1 } });
         logger.info(`Offer ${req.params.id} clicked by user ${req.user ? req.user.id : 'guest'}`);
         res.status(200).json({ msg: 'Click tracked' });
+    } catch (err) {
+        logger.error('Error in trackOfferClick:', { error: err.message, stack: err.stack });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.trackOfferClick = async (req, res) => {
+    try {
+        const offerId = req.params.id;
+        const userId = req.user.id;
+
+        const offer = await Offer.findById(offerId);
+        if (!offer) {
+            return res.status(404).json({ msg: 'Offer not found' });
+        }
+
+        const clickId = uuidv4();
+
+        // Log the click event
+        const newClick = new Click({
+            user: userId,
+            offer: offerId,
+            store: offer.store,
+            clickId: clickId,
+        });
+        await newClick.save();
+        
+        // This is a simplified redirect URL. In a real app, you'd construct this
+        // with the actual affiliate link and append your clickId as a subID.
+        // e.g., `https://affiliate-network.com/offer-link?subid=${clickId}`
+        const redirectUrl = `https://example-affiliate.com/track?offer_id=${offerId}&sub_id=${clickId}`;
+
+        logger.info(`Offer ${offerId} clicked by user ${userId} with clickId ${clickId}`);
+        res.status(200).json({ redirectUrl });
+
     } catch (err) {
         logger.error('Error in trackOfferClick:', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');

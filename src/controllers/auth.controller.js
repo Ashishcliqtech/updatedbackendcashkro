@@ -2,7 +2,7 @@ const User = require('../models/user.model.js');
 const Wallet = require('../models/wallet.model.js');
 const Referral = require('../models/referral.model.js');
 const redisClient = require('../config/redis.js');
-const { sendOtpEmail, sendPasswordResetEmail } = require('../utils/email.js');
+const { sendOtpEmail } = require('../utils/email.js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
@@ -37,6 +37,7 @@ exports.sendOtp = async (req, res) => {
 };
 
 // Correctly named function to verify OTP and create the user
+
 exports.verifyOtpAndCreateUser = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -63,31 +64,33 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
       email,
       phone,
       password: hashedPassword,
-      referralCode: uuidv4(),
-      isVerified: true,
+      referralCode: uuidv4(), // Generate a unique referral code for the new user
     });
 
+    // START of new logic
+    // Check if the user was referred by someone
     if (referredByCode) {
       const referringUser = await User.findOne({ referralCode: referredByCode });
       if (referringUser) {
         newUser.referredBy = referringUser._id;
-        // Update the referrer's data
-        await Referral.findOneAndUpdate(
-          { user: referringUser._id },
-          { $push: { referredUsers: newUser._id } },
-          { upsert: true }
-        );
+        // The logic to update the referrer's document will be handled
+        // when the new user makes their first transaction.
+      } else {
+        logger.warn(`Referral code ${referredByCode} not found.`);
       }
     }
 
+    // Save the new user to get their _id
+    await newUser.save();
+
+    // Create a wallet for the new user
     const newWallet = new Wallet({ user: newUser._id });
     await newWallet.save();
 
+    // Create a referral document for the new user
     const newReferral = new Referral({ user: newUser._id });
     await newReferral.save();
-
-    newUser.wallet = newWallet._id;
-    await newUser.save();
+    // END of new logic
 
     await redisClient.del(email);
     logger.info(`User created successfully: ${email}`);
