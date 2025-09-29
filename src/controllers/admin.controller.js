@@ -5,6 +5,7 @@ const logger = require('../utils/logger');
 const Wallet = require('../models/wallet.model');
 const Referral = require('../models/referral.model');
 const Transaction = require('../models/transaction.model');
+const Click = require('../models/click.model.js');
 
 // --- User Management ---
 
