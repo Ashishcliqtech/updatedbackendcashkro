@@ -147,49 +147,64 @@ exports.deleteStore = async (req, res) => {
 // @desc    Create a new offer
 // @access  Admin
 exports.createOffer = async (req, res) => {
-    try {
-      const newOffer = new Offer({
-        ...req.body,
-        imageUrl: req.file ? req.file.path : undefined,
-      });
-      const offer = await newOffer.save();
-      res.status(201).json(offer);
-    } catch (err) {
-      logger.error('Error in createOffer (admin):', { error: err.message, stack: err.stack });
-      res.status(500).send('Server Error');
+  try {
+    const offerData = { ...req.body };
+
+    // Handle file upload
+    if (req.file) {
+      offerData.imageUrl = req.file.path;
     }
+
+    // Convert string booleans to actual booleans
+    if (offerData.isTrending) offerData.isTrending = offerData.isTrending === 'true';
+    if (offerData.isExclusive) offerData.isExclusive = offerData.isExclusive === 'true';
+    if (offerData.isFeatured) offerData.isFeatured = offerData.isFeatured === 'true';
+
+    const offer = new Offer(offerData);
+    await offer.save();
+    res.status(201).json(offer);
+  } catch (err) {
+    logger.error('Error in createOffer:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
 };
 
-// @route   PUT /api/admin/offers/:id
-// @desc    Update an offer
-// @access  Admin
 exports.updateOffer = async (req, res) => {
-    try {
-        const updateData = { ...req.body };
-        if (req.file) {
-            updateData.imageUrl = req.file.path;
-        }
-        const offer = await Offer.findByIdAndUpdate(req.params.id, { $set: updateData }, { new: true });
-        if (!offer) return res.status(404).json({ msg: 'Offer not found' });
-        res.json(offer);
-    } catch (err) {
-        logger.error('Error in updateOffer (admin):', { error: err.message, stack: err.stack });
-        res.status(500).send('Server Error');
+  try {
+    let offer = await Offer.findById(req.params.id);
+    if (!offer) {
+      return res.status(404).json({ msg: 'Offer not found' });
     }
+
+    const updates = { ...req.body };
+
+    if (req.file) {
+      updates.imageUrl = req.file.path;
+    }
+    
+    if (updates.isTrending) updates.isTrending = updates.isTrending === 'true';
+    if (updates.isExclusive) updates.isExclusive = updates.isExclusive === 'true';
+    if (updates.isFeatured) updates.isFeatured = updates.isFeatured === 'true';
+
+    offer = await Offer.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
+    res.json(offer);
+  } catch (err) {
+    logger.error('Error in updateOffer:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
 };
 
-// @route   DELETE /api/admin/offers/:id
-// @desc    Delete an offer
-// @access  Admin
 exports.deleteOffer = async (req, res) => {
-    try {
-        const offer = await Offer.findById(req.params.id);
-        if (!offer) return res.status(404).json({ msg: 'Offer not found' });
-        await offer.deleteOne();
-        res.json({ msg: 'Offer removed' });
-    } catch (err) {
-        logger.error('Error in deleteOffer (admin):', { error: err.message, stack: err.stack });
-        res.status(500).send('Server Error');
+  try {
+    const offer = await Offer.findById(req.params.id);
+    if (!offer) {
+      return res.status(404).json({ msg: 'Offer not found' });
     }
+    await offer.deleteOne();
+    res.json({ msg: 'Offer removed' });
+  } catch (err) {
+    logger.error('Error in deleteOffer:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
 };
 

@@ -8,16 +8,24 @@ exports.getOffers = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 12;
-    const { store, category, offerType, sort } = req.query;
+    const { store, category, offerType, search, sortBy, sortOrder, minCashback } = req.query;
 
     const query = {};
     if (store) query.store = store;
     if (category) query.category = category;
     if (offerType) query.offerType = offerType;
-
+    if (minCashback) query.cashbackRate = { $gte: parseInt(minCashback, 10) };
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
     const sortOptions = {};
-    if (sort === 'newest') sortOptions.createdAt = -1;
-    if (sort === 'popular') sortOptions.clicks = -1; // Assuming a 'clicks' field
+    if (sortBy === 'expiry') sortOptions.expiryDate = sortOrder === 'asc' ? 1 : -1;
+    else if (sortBy === 'cashback') sortOptions.cashbackRate = sortOrder === 'desc' ? -1 : 1;
+    else sortOptions.createdAt = -1; // Default sort by newest
 
     const offers = await Offer.find(query)
       .populate('store', 'name logo')
@@ -30,6 +38,7 @@ exports.getOffers = async (req, res) => {
 
     res.json({
         offers,
+        total: totalOffers,
         totalPages: Math.ceil(totalOffers / limit),
         currentPage: page,
     });
