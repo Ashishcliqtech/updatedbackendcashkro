@@ -15,6 +15,7 @@ exports.getStores = async (req, res) => {
 
     const stores = await Store.find(query)
       .populate('category', 'name')
+      .populate('totalOffers') 
       .skip((page - 1) * limit)
       .limit(limit);
       
@@ -64,7 +65,12 @@ exports.searchStores = async (req, res) => {
     try {
         const { q } = req.query;
         // Create a text index on the 'name' and 'description' fields in your Store model for this to work
-        const stores = await Store.find({ $text: { $search: q } });
+        const stores = await Store.find({
+            $or: [
+                { name: { $regex: q, $options: 'i' } },
+                { description: { $regex: q, $options: 'i' } }
+            ]
+        }).populate('category', 'name');
         res.json(stores);
     } catch (err) {
         logger.error('Error in searchStores:', { error: err.message, stack: err.stack });
