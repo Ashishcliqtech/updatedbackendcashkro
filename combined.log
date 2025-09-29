@@ -10,3 +10,15 @@
 {"level":"info","message":"MongoDB connected","service":"cashback-app","timestamp":"2025-09-29 03:44:47"}
 {"level":"info","message":"OTP sent to email: test@example.com","service":"cashback-app","timestamp":"2025-09-29 03:45:35"}
 {"level":"info","message":"User logged in successfully: ranjan84048@gmail.com","service":"cashback-app","timestamp":"2025-09-29 03:46:28"}
+{"level":"info","message":"Server started on port 5000","service":"cashback-app","timestamp":"2025-09-29 03:57:46"}
+{"level":"info","message":"✅ Redis connected successfully","service":"cashback-app","timestamp":"2025-09-29 03:57:47"}
+{"level":"info","message":"MongoDB connected","service":"cashback-app","timestamp":"2025-09-29 03:57:47"}
+{"level":"info","message":"Server started on port 5000","service":"cashback-app","timestamp":"2025-09-29 06:15:10"}
+{"level":"info","message":"✅ Redis connected successfully","service":"cashback-app","timestamp":"2025-09-29 06:15:11"}
+{"level":"error","message":"connect ECONNREFUSED 64:ff9b::9f29:afe5:27017","service":"cashback-app","timestamp":"2025-09-29 06:15:41"}
+{"level":"info","message":"Server started on port 5000","service":"cashback-app","timestamp":"2025-09-29 06:15:55"}
+{"level":"info","message":"✅ Redis connected successfully","service":"cashback-app","timestamp":"2025-09-29 06:15:55"}
+{"level":"error","message":"connect ECONNREFUSED 64:ff9b::9f29:afe5:27017","service":"cashback-app","timestamp":"2025-09-29 06:16:21"}
+{"level":"info","message":"Server started on port 5000","service":"cashback-app","timestamp":"2025-09-29 06:17:29"}
+{"level":"info","message":"✅ Redis connected successfully","service":"cashback-app","timestamp":"2025-09-29 06:17:29"}
+{"level":"info","message":"MongoDB connected","service":"cashback-app","timestamp":"2025-09-29 06:17:29"}

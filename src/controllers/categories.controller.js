@@ -4,11 +4,11 @@ const Store = require('../models/store.model');
 const logger = require('../utils/logger');
 
 // @route   GET /api/categories
-// @desc    Get all categories
+// @desc    Get all categories with store and offer counts
 // @access  Public
 exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
+    const categories = await Category.find().populate('storeCount offerCount');
     res.json(categories);
   } catch (err) {
     logger.error('Error in getAllCategories:', { error: err.message, stack: err.stack });
@@ -21,7 +21,7 @@ exports.getAllCategories = async (req, res) => {
 // @access  Public
 exports.getCategoryById = async (req, res) => {
     try {
-      const category = await Category.findById(req.params.id);
+      const category = await Category.findById(req.params.id).populate('storeCount offerCount');
       if (!category) {
         return res.status(404).json({ msg: 'Category not found' });
       }
@@ -65,13 +65,13 @@ exports.getStoresByCategory = async (req, res) => {
 // @desc    Create a new category
 // @access  Admin
 exports.createCategory = async (req, res) => {
-    const { name, description } = req.body;
+    const { name, description, icon } = req.body;
     try {
         let category = await Category.findOne({ name });
         if (category) {
             return res.status(400).json({ msg: 'Category with this name already exists' });
         }
-        const newCategory = new Category({ name, description });
+        const newCategory = new Category({ name, description, icon });
         category = await newCategory.save();
         res.status(201).json(category);
     } catch (err) {
@@ -84,7 +84,7 @@ exports.createCategory = async (req, res) => {
 // @desc    Update a category
 // @access  Admin
 exports.updateCategory = async (req, res) => {
-    const { name, description } = req.body;
+    const { name, description, icon } = req.body;
     try {
         let category = await Category.findById(req.params.id);
         if (!category) {
@@ -93,6 +93,7 @@ exports.updateCategory = async (req, res) => {
         
         category.name = name || category.name;
         category.description = description || category.description;
+        category.icon = icon || category.icon;
 
         await category.save();
         res.json(category);
@@ -123,4 +124,3 @@ exports.deleteCategory = async (req, res) => {
         res.status(500).send('Server Error');
     }
 };
-
