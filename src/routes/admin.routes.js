@@ -17,8 +17,8 @@ router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 
 // --- Store Management ---
-router.post('/stores', upload.single('logo'), adminController.createStore);
-router.put('/stores/:id', upload.single('logo'), adminController.updateStore);
+router.post('/stores', storeUpload, adminController.createStore);
+router.put('/stores/:id', storeUpload, adminController.updateStore);
 router.delete('/stores/:id', adminController.deleteStore);
 
 // --- Offer Management ---

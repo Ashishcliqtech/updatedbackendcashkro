@@ -82,56 +82,74 @@ exports.deleteUser = async (req, res) => {
 // @desc    Create a new store
 // @access  Admin
 exports.createStore = async (req, res) => {
-  const { name, description, category, url, isPopular, isFeatured } = req.body;
+  const { name, description, url, category, isPopular, isFeatured, cashback_rate } = req.body;
+  
   try {
-    const newStore = new Store({
+    const storeData = {
       name,
       description,
-      category,
       url,
-      isPopular,
-      isFeatured,
-      logo: req.file ? req.file.path : undefined,
-    });
-    const store = await newStore.save();
+      category,
+      isPopular: isPopular === 'true',
+      isFeatured: isFeatured === 'true',
+      cashback_rate,
+      logo: req.files.logo ? req.files.logo[0].path : '',
+      banner_url: req.files.banner_url ? req.files.banner_url[0].path : '',
+    };
+
+    const store = new Store(storeData);
+    await store.save();
     res.status(201).json(store);
   } catch (err) {
-    logger.error('Error in createStore (admin):', { error: err.message, stack: err.stack });
+    logger.error('Error in createStore:', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };
 
-// @route   PUT /api/admin/stores/:id
-// @desc    Update a store
-// @access  Admin
 exports.updateStore = async (req, res) => {
-    try {
-        const updateData = { ...req.body };
-        if (req.file) {
-            updateData.logo = req.file.path;
-        }
-        const store = await Store.findByIdAndUpdate(req.params.id, { $set: updateData }, { new: true });
-        if (!store) return res.status(404).json({ msg: 'Store not found' });
-        res.json(store);
-    } catch (err) {
-        logger.error('Error in updateStore (admin):', { error: err.message, stack: err.stack });
-        res.status(500).send('Server Error');
+  const { name, description, url, category, isPopular, isFeatured, cashback_rate } = req.body;
+  
+  try {
+    let store = await Store.findById(req.params.id);
+    if (!store) {
+      return res.status(404).json({ msg: 'Store not found' });
     }
+
+    const updates = {
+      name,
+      description,
+      url,
+      category,
+      isPopular: isPopular === 'true',
+      isFeatured: isFeatured === 'true',
+      cashback_rate,
+    };
+
+    if (req.files.logo) {
+      updates.logo = req.files.logo[0].path;
+    }
+    if (req.files.banner_url) {
+      updates.banner_url = req.files.banner_url[0].path;
+    }
+
+    store = await Store.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
+    res.json(store);
+  } catch (err) {
+    logger.error('Error in updateStore:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
 };
 
-// @route   DELETE /api/admin/stores/:id
-// @desc    Delete a store
-// @access  Admin
 exports.deleteStore = async (req, res) => {
     try {
-        const store = await Store.findById(req.params.id);
-        if (!store) return res.status(404).json({ msg: 'Store not found' });
-        
-        await Offer.deleteMany({ store: req.params.id });
+        let store = await Store.findById(req.params.id);
+        if (!store) {
+            return res.status(404).json({ msg: 'Store not found' });
+        }
         await store.deleteOne();
-        res.json({ msg: 'Store and associated offers removed' });
+        res.json({ msg: 'Store removed' });
     } catch (err) {
-        logger.error('Error in deleteStore (admin):', { error: err.message, stack: err.stack });
+        logger.error('Error in deleteStore:', { error: err.message, stack: err.stack });
         res.status(500).send('Server Error');
     }
 };
