@@ -82,20 +82,16 @@ exports.deleteUser = async (req, res) => {
 // @desc    Create a new store
 // @access  Admin
 exports.createStore = async (req, res) => {
-  const { name, description, url, category, isPopular, isFeatured, cashback_rate } = req.body;
-  
   try {
-    const storeData = {
-      name,
-      description,
-      url,
-      category,
-      isPopular: isPopular === 'true',
-      isFeatured: isFeatured === 'true',
-      cashback_rate,
-      logo: req.files.logo ? req.files.logo[0].path : '',
-      banner_url: req.files.banner_url ? req.files.banner_url[0].path : '',
-    };
+    const storeData = { ...req.body };
+    
+    // Multer's upload.fields() provides a `files` object
+    if (req.files && req.files.logo) {
+      storeData.logo = req.files.logo[0].path;
+    }
+    if (req.files && req.files.banner_url) {
+      storeData.banner_url = req.files.banner_url[0].path;
+    }
 
     const store = new Store(storeData);
     await store.save();
@@ -107,28 +103,18 @@ exports.createStore = async (req, res) => {
 };
 
 exports.updateStore = async (req, res) => {
-  const { name, description, url, category, isPopular, isFeatured, cashback_rate } = req.body;
-  
   try {
     let store = await Store.findById(req.params.id);
     if (!store) {
       return res.status(404).json({ msg: 'Store not found' });
     }
 
-    const updates = {
-      name,
-      description,
-      url,
-      category,
-      isPopular: isPopular === 'true',
-      isFeatured: isFeatured === 'true',
-      cashback_rate,
-    };
+    const updates = { ...req.body };
 
-    if (req.files.logo) {
+    if (req.files && req.files.logo) {
       updates.logo = req.files.logo[0].path;
     }
-    if (req.files.banner_url) {
+    if (req.files && req.files.banner_url) {
       updates.banner_url = req.files.banner_url[0].path;
     }
 

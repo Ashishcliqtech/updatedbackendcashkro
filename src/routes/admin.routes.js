@@ -16,6 +16,11 @@ router.get('/users/:id', adminController.getUserById);
 router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 
+const storeUpload = upload.fields([
+  { name: 'logo', maxCount: 1 },
+  { name: 'banner_url', maxCount: 1 }
+]);
+
 // --- Store Management ---
 router.post('/stores', storeUpload, adminController.createStore);
 router.put('/stores/:id', storeUpload, adminController.updateStore);
