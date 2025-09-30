@@ -84,11 +84,17 @@ exports.searchStores = async (req, res) => {
 // @access  Public
 exports.getStoreById = async (req, res) => {
   try {
+    // Find the store by its ID and populate its category information
     const store = await Store.findById(req.params.id).populate('category');
     if (!store) {
       return res.status(404).json({ msg: 'Store not found' });
     }
-    res.json(store);
+
+    // Find all offers that belong to this store
+    const offers = await Offer.find({ store: req.params.id }).populate('store', 'name logo');
+
+    // Return both the store and its offers in one response
+    res.json({ store, offers });
   } catch (err) {
     logger.error('Error in getStoreById:', { error: err.message, stack: err.stack });
     if(err.kind === 'ObjectId') {
@@ -97,4 +103,5 @@ exports.getStoreById = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
+
 
