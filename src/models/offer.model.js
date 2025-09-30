@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const offerSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
-  url: { type: String, required: true }, // <-- ADD THIS LINE
+  url: { type: String, required: true },
   offerType: { type: String, enum: ['cashback', 'coupon', 'deal'], required: true },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
   isTrending: { type: Boolean, default: false },
@@ -16,6 +16,8 @@ const offerSchema = new mongoose.Schema({
   expiryDate: { type: Date },
   originalPrice: { type: Number },
   discountedPrice: { type: Number },
+  terms: { type: [String], default: [] }, 
+  minOrderValue: { type: Number, default: 0 }, 
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

@@ -161,6 +161,11 @@ exports.createOffer = async (req, res) => {
     if (offerData.isExclusive) offerData.isExclusive = offerData.isExclusive === 'true';
     if (offerData.isFeatured) offerData.isFeatured = offerData.isFeatured === 'true';
 
+    // Handle terms as an array
+    if (offerData.terms && typeof offerData.terms === 'string') {
+      offerData.terms = offerData.terms.split(',').map(term => term.trim());
+    }
+
     const offer = new Offer(offerData);
     await offer.save();
     res.status(201).json(offer);
@@ -186,6 +191,11 @@ exports.updateOffer = async (req, res) => {
     if (updates.isTrending) updates.isTrending = updates.isTrending === 'true';
     if (updates.isExclusive) updates.isExclusive = updates.isExclusive === 'true';
     if (updates.isFeatured) updates.isFeatured = updates.isFeatured === 'true';
+
+    // Handle terms as an array
+    if (updates.terms && typeof updates.terms === 'string') {
+      updates.terms = updates.terms.split(',').map(term => term.trim());
+    }
 
     offer = await Offer.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
     res.json(offer);

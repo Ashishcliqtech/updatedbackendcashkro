@@ -20,19 +20,25 @@ exports.getAllCategories = async (req, res) => {
 // @desc    Get a single category by ID
 // @access  Public
 exports.getCategoryById = async (req, res) => {
-    try {
-      const category = await Category.findById(req.params.id).populate('storeCount offerCount');
-      if (!category) {
-        return res.status(404).json({ msg: 'Category not found' });
-      }
-      res.json(category);
-    } catch (err) {
-      logger.error('Error in getCategoryById:', { error: err.message, stack: err.stack });
-      if (err.kind === 'ObjectId') {
-        return res.status(404).json({ msg: 'Category not found' });
-      }
-      res.status(500).send('Server Error');
+  try {
+    const category = await Category.findById(req.params.id);
+
+    if (!category) {
+      return res.status(404).json({ msg: 'Category not found' });
     }
+
+    const stores = await Store.find({ category: req.params.id });
+    const offers = await Offer.find({ category: req.params.id }).populate('store');
+
+    res.json({
+      category,
+      stores,
+      offers
+    });
+  } catch (err) {
+    logger.error('Error in getCategoryById:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
 };
 
 // @route   GET /api/categories/:id/offers
