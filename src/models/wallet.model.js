@@ -5,6 +5,7 @@ const WalletSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+    unique: true,
   },
   totalCashback: {
     type: Number,
@@ -17,6 +18,14 @@ const WalletSchema = new mongoose.Schema({
   pendingCashback: {
     type: Number,
     default: 0,
+  },
+  withdrawnCashback: {
+    type: Number,
+    default: 0,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
   },
 });
 
