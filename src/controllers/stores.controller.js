@@ -1,4 +1,5 @@
 const Store = require('../models/store.model');
+const Offer = require('../models/offer.model');
 const logger = require('../utils/logger');
 
 // @route   GET /api/stores
