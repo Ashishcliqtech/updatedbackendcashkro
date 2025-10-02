@@ -215,7 +215,9 @@ exports.sendNotification = async (req, res) => {
       recipient: userId
     };
 
-    const notification = await NotificationService.createNotification(notificationData);
+    const io = getIo();
+    const notificationService = new NotificationService(io);
+    const notification = await notificationService.createNotification(notificationData);
 
     res.status(201).json(notification);
   } catch (err) {
