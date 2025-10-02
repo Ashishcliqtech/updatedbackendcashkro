@@ -12,9 +12,6 @@ const NotificationService = require('../services/notification.service');
 
 // --- User Management ---
 
-// @route   GET /api/admin/users
-// @desc    Get all users
-// @access  Admin
 exports.getAllUsers = async (req, res) => {
     try {
         const users = await User.find().select('-password');
@@ -25,9 +22,6 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-// @route   GET /api/admin/users/:id
-// @desc    Get a single user by ID
-// @access  Admin
 exports.getUserById = async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-password');
@@ -41,9 +35,6 @@ exports.getUserById = async (req, res) => {
     }
 };
 
-// @route   PUT /api/admin/users/:id
-// @desc    Update a user's role or status
-// @access  Admin
 exports.updateUser = async (req, res) => {
     try {
         const { role, status } = req.body;
@@ -62,16 +53,12 @@ exports.updateUser = async (req, res) => {
     }
 };
 
-// @route   DELETE /api/admin/users/:id
-// @desc    Delete a user
-// @access  Admin
 exports.deleteUser = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ msg: 'User not found' });
         }
-        // Also delete associated data
         await Wallet.deleteOne({ user: req.params.id });
         await Referral.deleteOne({ user: req.params.id });
         await Transaction.deleteMany({ user: req.params.id });
@@ -86,14 +73,10 @@ exports.deleteUser = async (req, res) => {
 
 // --- Store Management ---
 
-// @route   POST /api/admin/stores
-// @desc    Create a new store
-// @access  Admin
 exports.createStore = async (req, res) => {
   try {
     const storeData = { ...req.body };
     
-    // Multer's upload.fields() provides a `files` object
     if (req.files && req.files.logo) {
       storeData.logo = req.files.logo[0].path;
     }
@@ -151,24 +134,18 @@ exports.deleteStore = async (req, res) => {
 
 // --- Offer Management ---
 
-// @route   POST /api/admin/offers
-// @desc    Create a new offer
-// @access  Admin
 exports.createOffer = async (req, res) => {
   try {
     const offerData = { ...req.body };
 
-    // Handle file upload
     if (req.file) {
       offerData.imageUrl = req.file.path;
     }
 
-    // Convert string booleans to actual booleans
     if (offerData.isTrending) offerData.isTrending = offerData.isTrending === 'true';
     if (offerData.isExclusive) offerData.isExclusive = offerData.isExclusive === 'true';
     if (offerData.isFeatured) offerData.isFeatured = offerData.isFeatured === 'true';
 
-    // Handle terms as an array
     if (offerData.terms && typeof offerData.terms === 'string') {
       offerData.terms = offerData.terms.split(',').map(term => term.trim());
     }
@@ -199,7 +176,6 @@ exports.updateOffer = async (req, res) => {
     if (updates.isExclusive) updates.isExclusive = updates.isExclusive === 'true';
     if (updates.isFeatured) updates.isFeatured = updates.isFeatured === 'true';
 
-    // Handle terms as an array
     if (updates.terms && typeof updates.terms === 'string') {
       updates.terms = updates.terms.split(',').map(term => term.trim());
     }
@@ -228,82 +204,43 @@ exports.deleteOffer = async (req, res) => {
 
 // --- Notification Management ---
 
-// @route   POST /api/admin/notifications
-// @desc    Create a notification
-// @access  Admin
-exports.createNotification = async (req, res) => {
-  const { recipient, title, message, type, actionUrl, channels } = req.body;
+exports.sendNotification = async (req, res) => {
+  const { type, title, message, userId } = req.body;
 
   try {
     const notificationData = {
-      recipient,
+      type,
       title,
       message,
-      type,
-      actionUrl,
-      channels,
+      recipient: userId
     };
 
-    const notification = new Notification(notificationData);
-    await notification.save();
-
-    // Send real-time notification
-    const io = getIo();
-    const notificationService = new NotificationService(io);
-    notificationService.sendNotification(recipient, notification);
+    const notification = await NotificationService.createNotification(notificationData);
 
     res.status(201).json(notification);
   } catch (err) {
-    logger.error('Error creating notification:', { error: err.message, stack: err.stack });
+    logger.error('Error sending notification:', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };
 
-// @route   GET /api/admin/notifications/:id/stats
-// @desc    Get stats for a single notification
-// @access  Admin
 exports.getNotificationStats = async (req, res) => {
   try {
-    const notification = await Notification.findById(req.params.id);
-    if (!notification) {
-      return res.status(404).json({ msg: 'Notification not found' });
-    }
+    const totalSent = await Notification.countDocuments();
+    const totalRead = await Notification.countDocuments({ isRead: true });
+    const totalClicks = await Notification.countDocuments({ isClicked: true });
 
     const stats = {
-      sent: 1, // Assuming 1 notification is sent at a time for now
-      opens: notification.isRead ? 1 : 0,
-      clicks: notification.isClicked ? 1 : 0,
-      openRate: notification.isRead ? 100 : 0,
-      clickRate: notification.isClicked ? 100 : 0,
+      totalSent,
+      totalRead,
+      readRate: totalSent > 0 ? (totalRead / totalSent) : 0,
+      totalClicks,
+      clickThroughRate: totalSent > 0 ? (totalClicks / totalSent) : 0,
     };
 
     res.json(stats);
   } catch (err) {
     logger.error('Error getting notification stats:', { error: err.message, stack: err.stack });
-    res.status(500).send('Server Error');
-  }
-};
-
-// @route   GET /api/admin/notifications/stats
-// @desc    Get aggregate stats for all notifications
-// @access  Admin
-exports.getAllNotificationStats = async (req, res) => {
-  try {
-    const totalSent = await Notification.countDocuments();
-    const totalOpens = await Notification.countDocuments({ isRead: true });
-    const totalClicks = await Notification.countDocuments({ isClicked: true });
-
-    const stats = {
-      totalSent,
-      totalOpens,
-      totalClicks,
-      openRate: totalSent > 0 ? (totalOpens / totalSent) * 100 : 0,
-      clickRate: totalSent > 0 ? (totalClicks / totalSent) * 100 : 0,
-    };
-
-    res.json(stats);
-  } catch (err) {
-    logger.error('Error getting all notification stats:', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };

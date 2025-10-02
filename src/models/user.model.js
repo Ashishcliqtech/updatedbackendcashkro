@@ -41,30 +41,20 @@ const UserSchema = new mongoose.Schema({
     ref: 'User',
   },
   notifications: {
-    deals: {
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true },
+    email: {
+      deals: { type: Boolean, default: true },
+      cashback: { type: Boolean, default: true },
+      referrals: { type: Boolean, default: true },
     },
-    cashback: {
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true },
+    push: {
+      deals: { type: Boolean, default: true },
+      cashback: { type: Boolean, default: true },
+      referrals: { type: Boolean, default: true },
     },
-    withdrawal: {
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true },
-    },
-    referral: {
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true },
-    },
-    support: {
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true },
-    },
-    system: {
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true },
-    },
+  },
+  lastSeen: {
+      type: Date,
+      default: Date.now
   },
   createdAt: {
     type: Date,

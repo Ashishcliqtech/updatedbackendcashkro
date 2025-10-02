@@ -34,20 +34,33 @@ class NotificationService {
     });
   }
 
-  async sendNotification(userId, notificationData) {
-    // 1. Save to DB
-    const notification = new Notification({
-      recipient: userId,
-      ...notificationData,
-    });
-    await notification.save();
+  async createNotification(notificationData) {
+    const { recipient, ...data } = notificationData;
 
-    // 2. Push to connected user
-    if (this.users[userId]) {
-      this.io.to(this.users[userId]).emit('new_notification', notification);
+    let userIds = [];
+    if (recipient === 'all') {
+      const users = await User.find({}, '_id');
+      userIds = users.map(user => user._id);
+    } else {
+      userIds = Array.isArray(recipient) ? recipient : [recipient];
     }
 
-    // 3. (Future) Send via other channels like email, push, sms based on user preferences
+    const notifications = await Promise.all(userIds.map(async (userId) => {
+      const notification = new Notification({
+        ...data,
+        recipient: userId,
+      });
+      await notification.save();
+
+      // 2. Push to connected user
+      if (this.users[userId]) {
+        this.io.to(this.users[userId]).emit('new_notification', notification);
+      }
+      
+      return notification;
+    }));
+
+    return notifications;
   }
 }
 

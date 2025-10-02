@@ -1,48 +1,84 @@
 const Notification = require('../models/notification.model');
+const User = require('../models/user.model');
 
-// @route   POST /api/notifications/:id/track-open
-// @desc    Track when a notification is opened
+// @route   GET /api/notifications/:userId
+// @desc    Get all notifications for a user
 // @access  Private
-exports.trackOpen = async (req, res) => {
+exports.getUserNotifications = async (req, res) => {
   try {
-    const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, recipient: req.user.id },
-      { isRead: true, readAt: new Date() },
-      { new: true }
-    );
+    const notifications = await Notification.find({ recipient: req.params.userId }).sort({ createdAt: -1 });
+    
+    // Update the user's lastSeen timestamp
+    await User.findByIdAndUpdate(req.params.userId, { lastSeen: new Date() });
 
-    if (!notification) {
-      return res.status(404).json({ msg: 'Notification not found' });
-    }
-
-    res.json(notification);
+    res.json(notifications);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
   }
 };
 
-// @route   POST /api/notifications/:id/track-click
-// @desc    Track when a notification is clicked
+// @route   PUT /api/notifications/:id/read
+// @desc    Mark a notification as read
 // @access  Private
-exports.trackClick = async (req, res) => {
+exports.markAsRead = async (req, res) => {
   try {
-    const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, recipient: req.user.id },
-      { isClicked: true, clickedAt: new Date(), isRead: true, readAt: new Date() }, // Also mark as read
-      { new: true }
-    );
+    const notification = await Notification.findById(req.params.id);
 
     if (!notification) {
       return res.status(404).json({ msg: 'Notification not found' });
     }
 
-    // Redirect to the action URL if it exists
-    if (notification.actionUrl) {
-      return res.redirect(notification.actionUrl);
+    // Ensure the user owns the notification
+    if (notification.recipient.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'User not authorized' });
     }
 
-    res.json(notification);
+    notification.isRead = true;
+    await notification.save();
+
+    res.json({ msg: 'Notification marked as read' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+// @route   PUT /api/notifications/read-all
+// @desc    Mark all notifications as read
+// @access  Private
+exports.markAllAsRead = async (req, res) => {
+  try {
+    await Notification.updateMany({ recipient: req.user.id, isRead: false }, { isRead: true });
+
+    res.json({ msg: 'All notifications marked as read' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+// @route   POST /api/notifications/:id/click
+// @desc    Mark a notification as clicked
+// @access  Private
+exports.markAsClicked = async (req, res) => {
+  try {
+    const notification = await Notification.findById(req.params.id);
+
+    if (!notification) {
+      return res.status(404).json({ msg: 'Notification not found' });
+    }
+
+    // Ensure the user owns the notification
+    if (notification.recipient.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'User not authorized' });
+    }
+
+    notification.isClicked = true;
+    notification.isRead = true; // A click also implies the notification was read
+    await notification.save();
+
+    res.json({ msg: 'Notification click recorded' });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

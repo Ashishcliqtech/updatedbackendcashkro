@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth.middleware');
-const upload = require('../middleware/upload.middleware'); // Correctly import the upload middleware
+const upload = require('../middleware/upload.middleware');
 const User = require('../models/user.model');
 const Wallet = require('../models/wallet.model');
 const bcrypt = require('bcryptjs');
+const _ = require('lodash');
 
 // @route   GET api/user/profile
 // @desc    Get user profile with wallet
@@ -18,7 +19,6 @@ router.get('/profile', auth, async (req, res) => {
 
     const wallet = await Wallet.findOne({ user: req.user.id });
 
-    // Combine user and wallet data
     const userProfile = {
       ...user.toObject(),
       totalCashback: wallet ? wallet.totalCashback : 0,
@@ -42,7 +42,6 @@ router.put('/profile', [auth, upload.single('avatar')], async (req, res) => {
   const profileFields = {};
   if (name) profileFields.name = name;
   if (phone) profileFields.phone = phone;
-  // Check for the uploaded file from multer and get its path from Cloudinary
   if (req.file) {
     profileFields.avatar = req.file.path;
   }
@@ -58,7 +57,6 @@ router.put('/profile', [auth, upload.single('avatar')], async (req, res) => {
         return res.status(404).json({ msg: 'User not found' });
     }
     
-    // To ensure the frontend gets the complete profile object including wallet info
     const wallet = await Wallet.findOne({ user: req.user.id });
     
     const userProfile = {
@@ -68,7 +66,6 @@ router.put('/profile', [auth, upload.single('avatar')], async (req, res) => {
       pendingCashback: wallet ? wallet.pendingCashback : 0,
     };
 
-
     res.json(userProfile);
   } catch (err) {
     console.error(err.message);
@@ -76,10 +73,10 @@ router.put('/profile', [auth, upload.single('avatar')], async (req, res) => {
   }
 });
 
-// @route   GET api/user/notifications/preferences
-// @desc    Get user notification preferences
+// @route   GET api/user/notifications/settings
+// @desc    Get user notification settings
 // @access  Private
-router.get('/notifications/preferences', auth, async (req, res) => {
+router.get('/notifications/settings', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('notifications');
     if (!user) {
@@ -92,11 +89,11 @@ router.get('/notifications/preferences', auth, async (req, res) => {
   }
 });
 
-// @route   PUT api/user/notifications/preferences
-// @desc    Update notification preferences
+// @route   PUT api/user/notifications/settings
+// @desc    Update notification settings
 // @access  Private
-router.put('/notifications/preferences', auth, async (req, res) => {
-  const preferences = req.body;
+router.put('/notifications/settings', auth, async (req, res) => {
+  const newSettings = req.body;
 
   try {
     const user = await User.findById(req.user.id);
@@ -104,12 +101,10 @@ router.put('/notifications/preferences', auth, async (req, res) => {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    // Deep merge preferences
-    user.notifications = {
-      ...user.notifications,
-      ...preferences,
-    };
-
+    // Deep merge the new settings into the existing ones
+    const updatedSettings = _.merge(user.notifications, newSettings);
+    
+    user.notifications = updatedSettings;
     await user.save();
 
     res.json(user.notifications);
@@ -143,13 +138,11 @@ router.put('/change-password', auth, async (req, res) => {
     }
 });
 
-
 // @route   DELETE api/user
 // @desc    Delete user, profile & wallet
 // @access  Private
 router.delete('/', auth, async (req, res) => {
   try {
-    // Also remove user's wallet and other related data
     await Wallet.findOneAndRemove({ user: req.user.id });
     await User.findByIdAndRemove(req.user.id);
 

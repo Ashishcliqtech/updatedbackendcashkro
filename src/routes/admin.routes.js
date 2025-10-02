@@ -42,9 +42,7 @@ router.put('/:id', upload.single('imageUrl'), contentController.updateContent);
 router.delete('/content/:id', contentController.deleteContent);
 
 // --- Notification Management ---
-router.post('/notifications', adminController.createNotification);
-router.get('/notifications/stats', adminController.getAllNotificationStats);
-router.get('/notifications/:id/stats', adminController.getNotificationStats);
-
+router.post('/notifications/send', adminController.sendNotification);
+router.get('/notifications/stats', adminController.getNotificationStats);
 
 module.exports = router;
