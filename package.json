@@ -4,7 +4,7 @@
   "description": "Backend for the cashback and coupon application",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node --dns-result-order=ipv4first index.js",
     "dev": "nodemon index.js"
   },
   "dependencies": {
@@ -17,6 +17,7 @@
     "mongoose": "^7.0.3",
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
+    "nodemailer": "^7.0.6",
     "redis": "^4.6.5",
     "resend": "^1.0.0",
     "socket.io": "^4.8.1",
