@@ -1,31 +1,28 @@
 const nodemailer = require('nodemailer');
 const logger = require('./logger');
+require('dotenv').config();
 
-// Brevo SMTP configuration (directly in code)
+// Create a transporter object using the default SMTP transport
 const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false, // Use STARTTLS (not SMTPS)
+  host: process.env.EMAIL_HOST,
+  port: process.env.EMAIL_PORT,
+  secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
   auth: {
-    user: '97c4ed003@smtp-brevo.com',
-    pass: 'xsmtpsib-b62bfae873cb4450134e14a9755d9386e8b2f69e9ad4475e6999494c858e85a5-NwJSCZTWtP2Ep8IK',
+    user: process.env.EMAIL_USER, // Brevo SMTP user
+    pass: process.env.EMAIL_PASS, // Brevo SMTP key
   },
 });
 
-const SENDER_NAME = 'SaveMoneySupport';
-const SENDER_EMAIL = 'ashish.cliqtech@gmail.com';
-const FRONTEND_URL = 'https://savemoneyads.netlify.app'; // Update with actual frontend URL
-
 const sendOtpEmail = async (to, otp) => {
-  const from = `"${SENDER_NAME}" <${SENDER_EMAIL}>`;
+  const from = `\"${process.env.SENDER_NAME}\" <${process.env.SENDER_EMAIL}>`;
   logger.info(`Attempting to send OTP email to: ${to} from: ${from}`);
 
-  // HTML template
+  // Professional HTML email template
   const emailHtml = `
   <div style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; padding: 20px;">
     <div style="max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
       <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #ddd;">
-        <h1 style="color: #444; margin: 0;">${SENDER_NAME}</h1>
+        <h1 style="color: #444; margin: 0;">${process.env.SENDER_NAME}</h1>
       </div>
       <div style="text-align: center; padding: 30px 0;">
         <h2 style="color: #555;">Your One-Time Password</h2>
@@ -36,7 +33,7 @@ const sendOtpEmail = async (to, otp) => {
         <p>If you did not request this code, please ignore this email.</p>
       </div>
       <div style="text-align: center; padding-top: 20px; font-size: 12px; color: #777; border-top: 1px solid #ddd;">
-        <p>&copy; ${new Date().getFullYear()} ${SENDER_NAME}. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} ${process.env.SENDER_NAME}. All rights reserved.</p>
       </div>
     </div>
   </div>`;
@@ -57,16 +54,16 @@ const sendOtpEmail = async (to, otp) => {
 };
 
 const sendPasswordResetEmail = async (to, token) => {
-  const resetLink = `${FRONTEND_URL}/reset-password?token=${token}`;
-  const from = `"${SENDER_NAME}" <${SENDER_EMAIL}>`;
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const from = `\"${process.env.SENDER_NAME}\" <${process.env.SENDER_EMAIL}>`;
   logger.info(`Attempting to send password reset email to: ${to} from: ${from}`);
 
-  // HTML template
+  // Professional HTML email template for password reset
   const emailHtml = `
   <div style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; padding: 20px;">
     <div style="max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
       <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #ddd;">
-        <h1 style="color: #444; margin: 0;">${SENDER_NAME}</h1>
+        <h1 style="color: #444; margin: 0;">${process.env.SENDER_NAME}</h1>
       </div>
       <div style="text-align: center; padding: 30px 0;">
         <h2 style="color: #555;">Password Reset Request</h2>
@@ -76,7 +73,7 @@ const sendPasswordResetEmail = async (to, token) => {
         <p style="font-size: 12px; color: #777; margin-top: 20px;">If the button above doesn't work, copy and paste this link into your browser:<br><a href="${resetLink}" style="color: #007BFF;">${resetLink}</a></p>
       </div>
       <div style="text-align: center; padding-top: 20px; font-size: 12px; color: #777; border-top: 1px solid #ddd;">
-        <p>&copy; ${new Date().getFullYear()} ${SENDER_NAME}. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} ${process.env.SENDER_NAME}. All rights reserved.</p>
       </div>
     </div>
   </div>`;
