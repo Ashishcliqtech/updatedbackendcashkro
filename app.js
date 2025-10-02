@@ -1,8 +1,12 @@
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
 const connectDB = require('./src/config/db');
+const { initSocket } = require('./src/utils/socket');
+const NotificationService = require('./src/services/notification.service');
 
 const app = express();
+const server = http.createServer(app);
 
 // Connect Database
 connectDB();
@@ -10,6 +14,11 @@ connectDB();
 // Init Middleware
 app.use(express.json());
 app.use(cors());
+
+// Initialize Socket.io
+const io = initSocket(server);
+const notificationService = new NotificationService(io);
+notificationService.init();
 
 // Define Routes
 app.use('/api/auth', require('./src/routes/auth.routes'));
@@ -21,11 +30,9 @@ app.use('/api/referrals', require('./src/routes/referral.routes'));
 app.use('/api/stores', require('./src/routes/stores.routes'));
 app.use('/api/wallet', require('./src/routes/wallet.routes'));
 app.use('/api/webhook', require('./src/routes/webhook.routes.js'));
+app.use('/api/notifications', require('./src/routes/notification.routes.js'));
 
-// Admin Routes (Optional, can be a separate app or protected area)
-// For this project, we assume admin routes are part of the same app
-// and protected by middleware. The provided structure already has this.
+// Admin Routes
 app.use('/api/admin', require('./src/routes/admin.routes'));
 
-
-module.exports = app;
+module.exports = { app, server };

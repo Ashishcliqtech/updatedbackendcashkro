@@ -76,30 +76,47 @@ router.put('/profile', [auth, upload.single('avatar')], async (req, res) => {
   }
 });
 
-// @route   PUT api/user/notifications
+// @route   GET api/user/notifications/preferences
+// @desc    Get user notification preferences
+// @access  Private
+router.get('/notifications/preferences', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('notifications');
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.json(user.notifications);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   PUT api/user/notifications/preferences
 // @desc    Update notification preferences
 // @access  Private
-router.put('/notifications', auth, async (req, res) => {
-    const { email, push, sms } = req.body;
+router.put('/notifications/preferences', auth, async (req, res) => {
+  const preferences = req.body;
 
-    try {
-        const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ msg: 'User not found' });
-        }
-        
-        if (email !== undefined) user.notifications.email = email;
-        if (push !== undefined) user.notifications.push = push;
-        if (sms !== undefined) user.notifications.sms = sms;
-        
-        await user.save();
-        
-        // Return the full updated user object to sync the frontend
-        res.json(user);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
     }
+
+    // Deep merge preferences
+    user.notifications = {
+      ...user.notifications,
+      ...preferences,
+    };
+
+    await user.save();
+
+    res.json(user.notifications);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
 });
 
 // @route   PUT api/user/change-password

@@ -27,6 +27,11 @@ const UserSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'banned'],
+    default: 'active'
+  },
   referralCode: {
     type: String,
     unique: true,
@@ -36,9 +41,30 @@ const UserSchema = new mongoose.Schema({
     ref: 'User',
   },
   notifications: {
-    email: { type: Boolean, default: true },
-    push: { type: Boolean, default: true },
-    sms: { type: Boolean, default: false }
+    deals: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+    },
+    cashback: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+    },
+    withdrawal: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+    },
+    referral: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+    },
+    support: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+    },
+    system: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+    },
   },
   createdAt: {
     type: Date,

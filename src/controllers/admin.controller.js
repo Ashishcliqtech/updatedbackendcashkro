@@ -1,11 +1,14 @@
 const User = require('../models/user.model');
 const Store = require('../models/store.model');
 const Offer = require('../models/offer.model');
+const Notification = require('../models/notification.model');
+const { getIo } = require('../utils/socket');
 const logger = require('../utils/logger');
 const Wallet = require('../models/wallet.model');
 const Referral = require('../models/referral.model');
 const Transaction = require('../models/transaction.model');
 const Click = require('../models/click.model.js');
+const NotificationService = require('../services/notification.service');
 
 // --- User Management ---
 
@@ -43,8 +46,12 @@ exports.getUserById = async (req, res) => {
 // @access  Admin
 exports.updateUser = async (req, res) => {
     try {
-        const { role } = req.body;
-        const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select('-password');
+        const { role, status } = req.body;
+        const updatedFields = {};
+        if (role) updatedFields.role = role;
+        if (status) updatedFields.status = status;
+
+        const user = await User.findByIdAndUpdate(req.params.id, updatedFields, { new: true }).select('-password');
         if (!user) {
             return res.status(404).json({ msg: 'User not found' });
         }
@@ -219,3 +226,84 @@ exports.deleteOffer = async (req, res) => {
   }
 };
 
+// --- Notification Management ---
+
+// @route   POST /api/admin/notifications
+// @desc    Create a notification
+// @access  Admin
+exports.createNotification = async (req, res) => {
+  const { recipient, title, message, type, actionUrl, channels } = req.body;
+
+  try {
+    const notificationData = {
+      recipient,
+      title,
+      message,
+      type,
+      actionUrl,
+      channels,
+    };
+
+    const notification = new Notification(notificationData);
+    await notification.save();
+
+    // Send real-time notification
+    const io = getIo();
+    const notificationService = new NotificationService(io);
+    notificationService.sendNotification(recipient, notification);
+
+    res.status(201).json(notification);
+  } catch (err) {
+    logger.error('Error creating notification:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
+};
+
+// @route   GET /api/admin/notifications/:id/stats
+// @desc    Get stats for a single notification
+// @access  Admin
+exports.getNotificationStats = async (req, res) => {
+  try {
+    const notification = await Notification.findById(req.params.id);
+    if (!notification) {
+      return res.status(404).json({ msg: 'Notification not found' });
+    }
+
+    const stats = {
+      sent: 1, // Assuming 1 notification is sent at a time for now
+      opens: notification.isRead ? 1 : 0,
+      clicks: notification.isClicked ? 1 : 0,
+      openRate: notification.isRead ? 100 : 0,
+      clickRate: notification.isClicked ? 100 : 0,
+    };
+
+    res.json(stats);
+  } catch (err) {
+    logger.error('Error getting notification stats:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
+};
+
+// @route   GET /api/admin/notifications/stats
+// @desc    Get aggregate stats for all notifications
+// @access  Admin
+exports.getAllNotificationStats = async (req, res) => {
+  try {
+    const totalSent = await Notification.countDocuments();
+    const totalOpens = await Notification.countDocuments({ isRead: true });
+    const totalClicks = await Notification.countDocuments({ isClicked: true });
+
+    const stats = {
+      totalSent,
+      totalOpens,
+      totalClicks,
+      openRate: totalSent > 0 ? (totalOpens / totalSent) * 100 : 0,
+      clickRate: totalSent > 0 ? (totalClicks / totalSent) * 100 : 0,
+    };
+
+    res.json(stats);
+  } catch (err) {
+    logger.error('Error getting all notification stats:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
+};

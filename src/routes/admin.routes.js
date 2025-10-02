@@ -38,9 +38,13 @@ router.delete('/categories/:id', categoriesController.deleteCategory);
 
 // --- Content Management ---
 router.post('/content', upload.single('imageUrl'), contentController.createContent);
-router.put('/content/:id', upload.single('imageUrl'), contentController.updateContent);
+router.put('/:id', upload.single('imageUrl'), contentController.updateContent);
 router.delete('/content/:id', contentController.deleteContent);
+
+// --- Notification Management ---
+router.post('/notifications', adminController.createNotification);
+router.get('/notifications/stats', adminController.getAllNotificationStats);
+router.get('/notifications/:id/stats', adminController.getNotificationStats);
 
 
 module.exports = router;
-
