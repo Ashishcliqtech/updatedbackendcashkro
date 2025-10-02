@@ -13,6 +13,10 @@ require('dotenv').config();
 exports.sendOtp = async (req, res) => {
   const { name, email, phone, password, referredByCode } = req.body;
 
+  if (!password) {
+    return res.status(400).json({ msg: 'Password is required' });
+  }
+
   try {
     let user = await User.findOne({ email });
     if (user) {
@@ -200,4 +204,3 @@ exports.resetPassword = async (req, res) => {
     res.status(400).json({ msg: 'Invalid or expired token' });
   }
 };
-
