@@ -46,7 +46,4 @@ router.delete('/content/:id', contentController.deleteContent);
 router.post('/notifications/send', adminController.sendNotification);
 router.get('/notifications/stats', adminController.getNotificationStats);
 
-// --- Chat Management ---
-router.post('/chat/start', adminController.startChatWithUser);
-
 module.exports = router;
