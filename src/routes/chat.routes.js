@@ -1,22 +1,18 @@
 
 const express = require('express');
 const router = express.Router();
-const protect = require('../middleware/auth.middleware');
 
 module.exports = (notificationService) => {
   const chatController = require('../controllers/chat.controller')(notificationService);
 
   // Get user's conversations
-  router.get('/conversations', protect, chatController.getUserConversations);
-
-  // Start a new conversation
-  router.post('/conversations', protect, chatController.startNewConversation);
+  router.get('/conversations/:userId', chatController.getUserConversations);
 
   // Get conversation messages
-  router.get('/conversations/:conversationId/messages', protect, chatController.getConversationMessages);
+  router.get('/messages/:conversationId', chatController.getConversationMessages);
 
   // Send a message
-  router.post('/conversations/:conversationId/messages', protect, chatController.sendMessage);
+  router.post('/send', chatController.sendMessage);
 
   return router;
 };
