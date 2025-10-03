@@ -37,7 +37,7 @@ exports.sendMessage = async (userId, message) => {
         },
     });
 
-    const result = await chat.sendMessage(message);
+    const result = await chat.sendMessage("Only answer questions with the data of the app, do not use external data. Here is the question: " + message);
     const response = await result.response;
     const text = response.text();
 
