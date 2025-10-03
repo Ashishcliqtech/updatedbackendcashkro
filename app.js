@@ -39,6 +39,7 @@ app.use('/api/webhook', require('./src/routes/webhook.routes.js'));
 app.use('/api/notifications', require('./src/routes/notification.routes.js'));
 app.use('/api/chat', require('./src/routes/chat.routes')(notificationService));
 app.use('/api/online', require('./src/routes/online.routes'));
+app.use('/api/ai', require('./src/routes/ai.routes'));
 
 // Admin Routes
 app.use('/api/admin', require('./src/routes/admin.routes'));
