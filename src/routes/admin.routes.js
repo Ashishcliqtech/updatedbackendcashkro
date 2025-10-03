@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin.controller');
@@ -44,5 +45,8 @@ router.delete('/content/:id', contentController.deleteContent);
 // --- Notification Management ---
 router.post('/notifications/send', adminController.sendNotification);
 router.get('/notifications/stats', adminController.getNotificationStats);
+
+// --- Chat Management ---
+router.post('/chat/start', adminController.startChatWithUser);
 
 module.exports = router;

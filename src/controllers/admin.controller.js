@@ -1,3 +1,4 @@
+
 const User = require('../models/user.model');
 const Store = require('../models/store.model');
 const Offer = require('../models/offer.model');
@@ -9,6 +10,7 @@ const Referral = require('../models/referral.model');
 const Transaction = require('../models/transaction.model');
 const Click = require('../models/click.model.js');
 const NotificationService = require('../services/notification.service');
+const Conversation = require('../models/conversation.model');
 
 // --- User Management ---
 
@@ -243,6 +245,34 @@ exports.getNotificationStats = async (req, res) => {
     res.json(stats);
   } catch (err) {
     logger.error('Error getting notification stats:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
+};
+
+// --- Chat Management ---
+exports.startChatWithUser = async (req, res) => {
+  const { adminId, userId } = req.body;
+
+  try {
+    // Find an existing conversation
+    let conversation = await Conversation.findOne({
+      participants: { $all: [adminId, userId] },
+    });
+
+    // If no conversation exists, create a new one
+    if (!conversation) {
+      conversation = new Conversation({
+        participants: [adminId, userId],
+      });
+      await conversation.save();
+    }
+
+    // Return the conversation, populated with participant details
+    const populatedConversation = await Conversation.findById(conversation._id).populate('participants');
+
+    res.status(200).json(populatedConversation);
+  } catch (err) {
+    logger.error('Error in startChatWithUser (admin):', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };

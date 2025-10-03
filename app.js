@@ -1,8 +1,11 @@
+
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const connectDB = require('./src/config/db');
 const { initSocket } = require('./src/utils/socket');
+const { initChat } = require('./src/utils/chat');
+const onlineController = require('./src/controllers/online.controller');
 const NotificationService = require('./src/services/notification.service');
 
 const app = express();
@@ -17,6 +20,9 @@ app.use(cors());
 
 // Initialize Socket.io
 const io = initSocket(server);
+app.set('socketio', io);
+initChat(io);
+onlineController.setup(io);
 const notificationService = new NotificationService(io);
 notificationService.init();
 
@@ -31,6 +37,8 @@ app.use('/api/stores', require('./src/routes/stores.routes'));
 app.use('/api/wallet', require('./src/routes/wallet.routes'));
 app.use('/api/webhook', require('./src/routes/webhook.routes.js'));
 app.use('/api/notifications', require('./src/routes/notification.routes.js'));
+app.use('/api/chat', require('./src/routes/chat.routes'));
+app.use('/api/online', require('./src/routes/online.routes'));
 
 // Admin Routes
 app.use('/api/admin', require('./src/routes/admin.routes'));

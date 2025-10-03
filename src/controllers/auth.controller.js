@@ -1,3 +1,4 @@
+
 const User = require('../models/user.model.js');
 const Wallet = require('../models/wallet.model.js');
 const Referral = require('../models/referral.model.js');
@@ -145,6 +146,9 @@ exports.login = async (req, res) => {
       expiresIn: process.env.JWT_EXPIRES_IN,
     });
 
+    const io = req.app.get('socketio');
+    io.emit('user online', { userId: user.id, role: user.role });
+
     logger.info(`User logged in successfully: ${email}`);
     res.json({ token });
   } catch (err) {
@@ -190,7 +194,7 @@ exports.resetPassword = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.user.id;
+    const userId = decoded.user.I;
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
