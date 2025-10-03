@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const AI = require('../models/ai.model');
 
-// Load API Key from environment (must match the key from your screenshot)
+// Load API Key from environment
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Get chat history for a user
@@ -16,8 +16,8 @@ exports.getChatHistory = async (userId) => {
 
 // Send a message to Gemini AI
 exports.sendMessage = async (userId, message) => {
-  // ✅ Use free tier supported model
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  // ✅ Use a model confirmed to be available by the ListModels API
+  const model = genAI.getGenerativeModel({ model: 'gemini-pro-latest' });
 
   // Initialize chat with previous history
   const chat = model.startChat({
