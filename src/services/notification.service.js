@@ -1,5 +1,6 @@
 const User = require('../models/user.model');
 const Notification = require('../models/notification.model');
+const jwt = require('jsonwebtoken');
 
 class NotificationService {
   constructor(io) {

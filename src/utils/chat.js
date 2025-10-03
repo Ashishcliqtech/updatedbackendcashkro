@@ -1,13 +1,9 @@
-
-let io;
-
-const initChat = (socketIO) => {
-  io = socketIO;
+const initChat = (io) => {
   io.on('connection', (socket) => {
-    console.log('A user connected');
+    console.log('A user connected to chat');
 
     socket.on('disconnect', () => {
-      console.log('User disconnected');
+      console.log('User disconnected from chat');
     });
 
     socket.on('chat message', (msg) => {

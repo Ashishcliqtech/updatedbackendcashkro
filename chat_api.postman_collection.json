@@ -1,91 +1,15 @@
 {
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
-		"name": "Chat API",
+		"name": "Chat API - Updated",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "Chat",
+			"name": "Conversations",
 			"item": [
 				{
-					"name": "Start Chat with User",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{
-    "adminId": "{{adminId}}",
-    "userId": "{{userId}}"
-}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/admin/chat/start",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"admin",
-								"chat",
-								"start"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Send Message",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{
-    "sender": "{{userId}}",
-    "receiver": "{{adminId}}",
-    "message": "Hello, I have a question."
-}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/chat/send",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"chat",
-								"send"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Conversations",
+					"name": "Get User's Conversations",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -96,7 +20,73 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/chat/conversations/{{userId}}",
+							"raw": "{{baseUrl}}/api/chat/conversations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"chat",
+								"conversations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start a New Conversation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{
+    "recipientId": "{{adminId}}"
+}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/chat/conversations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"chat",
+								"conversations"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Messages",
+			"item": [
+				{
+					"name": "Get Conversation Messages",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/chat/conversations/{{conversationId}}/messages",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -104,33 +94,46 @@
 								"api",
 								"chat",
 								"conversations",
-								"{{userId}}"
+								"{{conversationId}}",
+								"messages"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Get Messages",
+					"name": "Send a Message",
 					"request": {
-						"method": "GET",
+						"method": "POST",
 						"header": [
 							{
 								"key": "Authorization",
 								"value": "Bearer {{user_token}}",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": "{
+    "message": "Hello, this is a test message."
+}"
+						},
 						"url": {
-							"raw": "{{baseUrl}}/api/chat/messages/{{conversationId}}",
+							"raw": "{{baseUrl}}/api/chat/conversations/{{conversationId}}/messages",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"chat",
-								"messages",
-								"{{conversationId}}"
+								"conversations",
+								"{{conversationId}}",
+								"messages"
 							]
 						}
 					},

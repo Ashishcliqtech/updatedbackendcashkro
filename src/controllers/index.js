@@ -1,0 +1,15 @@
+module.exports = {
+  adminController: require('./admin.controller'),
+  authController: require('./auth.controller'),
+  categoriesController: require('./categories.controller'),
+  chatController: require('./chat.controller'),
+  contentController: require('./content.controller'),
+  notificationController: require('./notification.controller'),
+  offersController: require('./offers.controller'),
+  onlineController: require('./online.controller'),
+  referralController: require('./referral.controller'),
+  storesController: require('./stores.controller'),
+  userController: require('./user.controller'),
+  walletController: require('./wallet.controller'),
+  webhookController: require('./webhook.controller'),
+};

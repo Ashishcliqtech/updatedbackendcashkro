@@ -37,7 +37,7 @@ app.use('/api/stores', require('./src/routes/stores.routes'));
 app.use('/api/wallet', require('./src/routes/wallet.routes'));
 app.use('/api/webhook', require('./src/routes/webhook.routes.js'));
 app.use('/api/notifications', require('./src/routes/notification.routes.js'));
-app.use('/api/chat', require('./src/routes/chat.routes'));
+app.use('/api/chat', require('./src/routes/chat.routes')(notificationService));
 app.use('/api/online', require('./src/routes/online.routes'));
 
 // Admin Routes
