@@ -6,7 +6,7 @@ const StoreSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
   isPopular: { type: Boolean, default: false },
   isFeatured: { type: Boolean, default: false },
-  logo: { type: String, required: true },
+  logo: { type: String, required: false },
   banner_url: { type: String }, 
   url: { type: String, required: true },
   cashback_rate: { type: Number, required: true, default: 0 },

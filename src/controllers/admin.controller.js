@@ -48,7 +48,14 @@ exports.deleteUser = async (req, res) => {
 // --- Store Management ---
 exports.createStore = async (req, res) => {
   try {
-    const store = new Store(req.body);
+    const storeData = req.body;
+    if (req.files && req.files.logo) {
+      storeData.logo = req.files.logo[0].path;
+    }
+    if (req.files && req.files.banner_url) {
+      storeData.banner_url = req.files.banner_url[0].path;
+    }
+    const store = new Store(storeData);
     await store.save();
     res.status(201).json(store);
   } catch (error) {
@@ -58,7 +65,15 @@ exports.createStore = async (req, res) => {
 
 exports.updateStore = async (req, res) => {
   try {
-    const store = await Store.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const storeData = req.body;
+    if (req.files && req.files.logo) {
+      storeData.logo = req.files.logo[0].path;
+    }
+    if (req.files && req.files.banner_url) {
+      storeData.banner_url = req.files.banner_url[0].path;
+    }
+
+    const store = await Store.findByIdAndUpdate(req.params.id, storeData, { new: true });
     if (!store) return res.status(404).json({ message: 'Store not found' });
     res.json(store);
   } catch (error) {
@@ -79,7 +94,11 @@ exports.deleteStore = async (req, res) => {
 // --- Offer Management ---
 exports.createOffer = async (req, res) => {
   try {
-    const offer = new Offer(req.body);
+    const offerData = req.body;
+    if (req.file) {
+      offerData.imageUrl = req.file.path;
+    }
+    const offer = new Offer(offerData);
     await offer.save();
     res.status(201).json(offer);
   } catch (error) {
@@ -89,7 +108,11 @@ exports.createOffer = async (req, res) => {
 
 exports.updateOffer = async (req, res) => {
   try {
-    const offer = await Offer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const offerData = req.body;
+    if (req.file) {
+      offerData.imageUrl = req.file.path;
+    }
+    const offer = await Offer.findByIdAndUpdate(req.params.id, offerData, { new: true });
     if (!offer) return res.status(404).json({ message: 'Offer not found' });
     res.json(offer);
   } catch (error) {
@@ -151,4 +174,3 @@ exports.startChatWithUser = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
-
