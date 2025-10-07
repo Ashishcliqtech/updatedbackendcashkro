@@ -1,65 +1,30 @@
-const Referral = require('../models/referral.model');
 const User = require('../models/user.model');
-const logger = require('../utils/logger');
+const Referral = require('../models/referral.model');
 
-// @route   GET /api/referrals
-// @desc    Get referral data for the authenticated user
-// @access  Authenticated
-exports.getReferralData = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).select('referralCode');
-        const referral = await Referral.findOne({ user: req.user.id })
-            .populate('referredUsers', 'name email createdAt');
-        
-        if (!referral || !user) {
-            return res.status(404).json({ msg: 'Referral data not found for user' });
-        }
+exports.getReferralDashboard = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
 
-        res.json({
-            referralCode: user.referralCode,
-            earnings: referral.earnings,
-            referredUsersCount: referral.referredUsers.length
-        });
-    } catch (err) {
-        logger.error('Error in getReferralData:', { error: err.message, stack: err.stack });
-        res.status(500).send('Server Error');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    const referrals = await Referral.find({ referrerId: userId });
+
+    const referredUsersCount = referrals.length;
+    const completedReferrals = referrals.filter(r => r.status === 'COMPLETED');
+    
+    //This is a static value for now, and should be updated to be dynamic
+    const earnings = completedReferrals.length * 10; 
+
+    res.status(200).json({
+      referralCode: user.referralCode,
+      referralLink: `https://www.savemoney.com/signup?ref=${user.referralCode}`,
+      earnings,
+      referredUsersCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching referral dashboard data', error });
+  }
 };
-
-// @route   POST /api/referrals/generate-link
-// @desc    Generate a referral link for the authenticated user
-// @access  Authenticated
-exports.generateReferralLink = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).select('referralCode');
-        if (!user || !user.referralCode) {
-            return res.status(404).json({ msg: 'User or referral code not found' });
-        }
-        
-        const referralLink = `${process.env.FRONTEND_URL}/signup?ref=${user.referralCode}`;
-        res.json({ referralLink });
-    } catch (err) {
-        logger.error('Error in generateReferralLink:', { error: err.message, stack: err.stack });
-        res.status(500).send('Server Error');
-    }
-};
-
-// @route   GET /api/referrals/history
-// @desc    Get referral history for the authenticated user
-// @access  Authenticated
-exports.getReferralHistory = async (req, res) => {
-    try {
-        const referral = await Referral.findOne({ user: req.user.id })
-            .populate('referredUsers', 'name email createdAt');
-
-        if (!referral) {
-            return res.status(404).json({ msg: 'Referral history not found' });
-        }
-        
-        res.json(referral.referredUsers);
-    } catch (err) {
-        logger.error('Error in getReferralHistory:', { error: err.message, stack: err.stack });
-        res.status(500).send('Server Error');
-    }
-};
-
