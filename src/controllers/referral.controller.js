@@ -10,13 +10,12 @@ exports.getReferralDashboard = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const referrals = await Referral.find({ referrerId: userId });
+    const referrals = await Referral.find({ referrer: userId });
 
     const referredUsersCount = referrals.length;
     const completedReferrals = referrals.filter(r => r.status === 'COMPLETED');
     
-    //This is a static value for now, and should be updated to be dynamic
-    const earnings = completedReferrals.length * 10; 
+    const earnings = completedReferrals.reduce((total, r) => total + r.rewardAmount, 0);
 
     res.status(200).json({
       referralCode: user.referralCode,
@@ -26,5 +25,25 @@ exports.getReferralDashboard = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching referral dashboard data', error });
+  }
+};
+
+exports.getReferralHistory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const referrals = await Referral.find({ referrer: userId })
+      .populate('referredUser', 'name')
+      .sort({ createdAt: -1 });
+
+    const referralHistory = referrals.map(referral => ({
+      referredUserName: referral.referredUser ? referral.referredUser.name : 'Deleted User',
+      status: referral.status,
+      rewardAmount: referral.rewardAmount,
+      date: referral.createdAt
+    }));
+
+    res.status(200).json({ referrals: referralHistory });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching referral history', error });
   }
 };

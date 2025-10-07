@@ -10,10 +10,12 @@ exports.getUserProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
     }
-    res.json(user);
+    res.json({
+      ...user.toObject(),
+      referralLink: `https://www.savemoney.com/signup?ref=${user.referralCode}`
+    });
   } catch (err) {
     logger.error('Error in getUserProfile:', { error: err.message, stack: err.stack });
     res.status(500).send('Server Error');
   }
 };
-

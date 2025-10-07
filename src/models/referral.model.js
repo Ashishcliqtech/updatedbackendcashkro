@@ -1,12 +1,12 @@
 const mongoose = require('mongoose');
 
 const ReferralSchema = new mongoose.Schema({
-  referrerId: {
+  referrer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
   },
-  referredId: {
+  referredUser: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
@@ -15,6 +15,10 @@ const ReferralSchema = new mongoose.Schema({
     type: String,
     enum: ['PENDING', 'COMPLETED', 'EXPIRED'],
     default: 'PENDING',
+  },
+  rewardAmount: {
+    type: Number,
+    default: 100,
   },
   createdAt: {
     type: Date,

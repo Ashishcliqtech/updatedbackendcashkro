@@ -1,18 +1,21 @@
-
 const User = require('../models/user.model.js');
 const Wallet = require('../models/wallet.model.js');
 const Referral = require('../models/referral.model.js');
 const redisClient = require('../config/redis.js');
-const { sendOtpEmail } = require('../utils/email.js');
+const { sendOtpEmail, sendPasswordResetEmail } = require('../utils/email.js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger.js');
 require('dotenv').config();
 
-// Correctly named function to send OTP, matching the original intent
+const generateReferralCode = (name) => {
+  const namePart = name.slice(0, 3).toUpperCase();
+  const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
+  return `${namePart}${randomPart}`;
+};
+
 exports.sendOtp = async (req, res) => {
-  const { name, email, phone, password, referredByCode } = req.body;
+  const { name, email, phone, password, referralCode } = req.body;
 
   if (!password) {
     return res.status(400).json({ msg: 'Password is required' });
@@ -26,7 +29,7 @@ exports.sendOtp = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpData = { name, email, phone, password, referredByCode, otp };
+    const otpData = { name, email, phone, password, referralCode, otp };
 
     await redisClient.set(email, JSON.stringify(otpData), {
       EX: 300, // 5 minutes
@@ -40,8 +43,6 @@ exports.sendOtp = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
-
-// Correctly named function to verify OTP and create the user
 
 exports.verifyOtpAndCreateUser = async (req, res) => {
   const { email, otp } = req.body;
@@ -59,7 +60,7 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
       return res.status(400).json({ msg: 'Invalid OTP' });
     }
 
-    const { name, phone, password, referredByCode } = otpData;
+    const { name, phone, password, referralCode } = otpData;
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -69,33 +70,28 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
       email,
       phone,
       password: hashedPassword,
-      referralCode: uuidv4(), // Generate a unique referral code for the new user
+      referralCode: generateReferralCode(name),
     });
 
-    // START of new logic
-    // Check if the user was referred by someone
-    if (referredByCode) {
-      const referringUser = await User.findOne({ referralCode: referredByCode });
+    if (referralCode) {
+      const referringUser = await User.findOne({ referralCode });
       if (referringUser) {
         newUser.referredBy = referringUser._id;
-        // The logic to update the referrer's document will be handled
-        // when the new user makes their first transaction.
+        const newReferral = new Referral({
+          referrerId: referringUser._id,
+          referredId: newUser._id,
+          rewardAmount: 100, // Default reward amount
+        });
+        await newReferral.save();
       } else {
-        logger.warn(`Referral code ${referredByCode} not found.`);
+        logger.warn(`Referral code ${referralCode} not found.`);
       }
     }
 
-    // Save the new user to get their _id
     await newUser.save();
 
-    // Create a wallet for the new user
     const newWallet = new Wallet({ user: newUser._id });
     await newWallet.save();
-
-    // Create a referral document for the new user
-    const newReferral = new Referral({ user: newUser._id });
-    await newReferral.save();
-    // END of new logic
 
     await redisClient.del(email);
     logger.info(`User created successfully: ${email}`);
@@ -118,7 +114,6 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
   }
 };
 
-// Login function - ensured it is correctly exported
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -157,13 +152,11 @@ exports.login = async (req, res) => {
   }
 };
 
-// Forgot Password function
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
     const user = await User.findOne({ email });
-    // We send a generic message to prevent email enumeration
     if (user) {
         const payload = {
             user: {
@@ -172,7 +165,7 @@ exports.forgotPassword = async (req, res) => {
           };
       
           const token = jwt.sign(payload, process.env.JWT_SECRET, {
-            expiresIn: '15m', // 15 minutes
+            expiresIn: '15m',
           });
       
           await sendPasswordResetEmail(email, token);
@@ -188,13 +181,12 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// Reset Password function
 exports.resetPassword = async (req, res) => {
   const { token, password } = req.body;
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.user.I;
+    const userId = decoded.user.id;
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
