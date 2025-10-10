@@ -2,13 +2,17 @@ const ContentSection = require('../models/content.model');
 const logger = require('../utils/logger');
 
 // @route   GET /api/content
-// @desc    Get all content sections (can filter by page)
+// @desc    Get all content sections (can filter by page and status)
 // @access  Public
 exports.getAllContent = async (req, res) => {
   try {
-    const { page } = req.query;
-    const query = page ? { page } : {};
-    const content = await ContentSection.find(query);
+    const { page, status } = req.query;
+    const query = {};
+    if (page) query.page = page;
+    if (status) query.status = status;
+    else query.status = 'published'; // Default to published for public view
+
+    const content = await ContentSection.find(query).sort({ updatedAt: -1 });
     res.json(content);
   } catch (err) {
     logger.error('Error in getAllContent:', { error: err.message, stack: err.stack });
@@ -16,18 +20,49 @@ exports.getAllContent = async (req, res) => {
   }
 };
 
-// @route   POST /api/content
+// @route   GET /api/content/:slug
+// @desc    Get a single content section by slug
+// @access  Public
+exports.getContentBySlug = async (req, res) => {
+  try {
+    const content = await ContentSection.findOne({ slug: req.params.slug, status: 'published' });
+    if (!content) {
+      return res.status(404).json({ msg: 'Content not found' });
+    }
+    res.json(content);
+  } catch (err) {
+    logger.error('Error in getContentBySlug:', { error: err.message, stack: err.stack });
+    res.status(500).send('Server Error');
+  }
+};
+
+
+// @route   POST /api/admin/content
 // @desc    Create a new content section
 // @access  Admin
 exports.createContent = async (req, res) => {
-  const { title, content, page } = req.body;
+  const { title, slug, content, page, contentType, status } = req.body;
+  
+  if (!title || !slug || !content || !page || !contentType) {
+    return res.status(400).json({ msg: 'Please provide all required fields' });
+  }
+
   try {
+    let section = await ContentSection.findOne({ slug });
+    if (section) {
+        return res.status(400).json({ msg: 'Content with this slug already exists' });
+    }
+
     const newContentSection = new ContentSection({
       title,
-      content,
+      slug,
+      content: JSON.parse(content), // Content is sent as a stringified JSON
       page,
+      contentType,
+      status,
       imageUrl: req.file ? req.file.path : undefined,
     });
+
     const savedContent = await newContentSection.save();
     res.status(201).json(savedContent);
   } catch (err) {
@@ -36,18 +71,22 @@ exports.createContent = async (req, res) => {
   }
 };
 
-// @route   PUT /api/content/:id
+// @route   PUT /api/admin/content/:id
 // @desc    Update a content section
 // @access  Admin
 exports.updateContent = async (req, res) => {
-  const { title, content, page } = req.body;
+  const { title, slug, content, page, contentType, status } = req.body;
+  
   try {
     let section = await ContentSection.findById(req.params.id);
     if (!section) {
       return res.status(404).json({ msg: 'Content section not found' });
     }
     
-    const updateData = { title, content, page };
+    const updateData = { title, slug, page, contentType, status };
+    if (content) {
+      updateData.content = JSON.parse(content);
+    }
     if (req.file) {
         updateData.imageUrl = req.file.path;
     }
@@ -64,7 +103,7 @@ exports.updateContent = async (req, res) => {
   }
 };
 
-// @route   DELETE /api/content/:id
+// @route   DELETE /api/admin/content/:id
 // @desc    Delete a content section
 // @access  Admin
 exports.deleteContent = async (req, res) => {
@@ -80,4 +119,3 @@ exports.deleteContent = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
-

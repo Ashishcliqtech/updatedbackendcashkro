@@ -42,7 +42,7 @@ router.delete('/categories/:id', categoriesController.deleteCategory);
 
 // --- Content Management ---
 router.post('/content', upload.single('imageUrl'), contentController.createContent);
-router.put('/:id', upload.single('imageUrl'), contentController.updateContent);
+router.put('/content/:id', upload.single('imageUrl'), contentController.updateContent);
 router.delete('/content/:id', contentController.deleteContent);
 
 // --- Notification Management ---
