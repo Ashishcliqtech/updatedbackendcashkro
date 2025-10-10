@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 const CategorySchema = new mongoose.Schema(
@@ -26,6 +27,9 @@ const CategorySchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+// Add a text index for searching
+CategorySchema.index({ name: 'text', description: 'text' });
 
 // Virtual properties to dynamically count associated stores and offers
 CategorySchema.virtual('storeCount', {

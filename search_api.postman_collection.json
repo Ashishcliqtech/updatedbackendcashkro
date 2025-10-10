@@ -1,0 +1,33 @@
+{
+	"info": {
+		"_postman_id": "f5b1b2c3-d4e5-f678-9012-34567890abcd",
+		"name": "Search API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Search for stores, categories, and offers",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/search?query=test",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"search"
+					],
+					"query": [
+						{
+							"key": "query",
+							"value": "test"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

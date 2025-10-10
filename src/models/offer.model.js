@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 const offerSchema = new mongoose.Schema({
@@ -23,6 +24,8 @@ const offerSchema = new mongoose.Schema({
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
 });
+
+offerSchema.index({ title: 'text', description: 'text' });
 
 offerSchema.virtual('id').get(function() {
   return this._id.toHexString();
