@@ -4,6 +4,42 @@ const Store = require('../models/store.model');
 const Offer = require('../models/offer.model');
 const Notification = require('../models/notification.model');
 const Conversation = require('../models/conversation.model');
+const Click = require('../models/click.model');
+const Transaction = require('../models/transaction.model');
+const Referral = require('../models/referral.model');
+
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const userCount = await User.countDocuments();
+    const storeCount = await Store.countDocuments();
+    const offerCount = await Offer.countDocuments();
+    const clickCount = await Click.countDocuments();
+    const transactionCount = await Transaction.countDocuments();
+    const referralCount = await Referral.countDocuments();
+
+    const cashbackData = await Transaction.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalCashback: { $sum: '$amount' }
+        }
+      }
+    ]);
+
+    res.json({
+      users: userCount,
+      stores: storeCount,
+      offers: offerCount,
+      clicks: clickCount,
+      transactions: transactionCount,
+      referrals: referralCount,
+      totalCashback: cashbackData.length > 0 ? cashbackData[0].totalCashback : 0,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 // --- User Management ---
 exports.getAllUsers = async (req, res) => {

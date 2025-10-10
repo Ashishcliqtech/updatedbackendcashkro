@@ -11,6 +11,8 @@ const upload = require('../middleware/upload.middleware');
 // All routes in this file are protected by auth and admin middleware
 router.use(authMiddleware, adminMiddleware);
 
+router.get('/stats', adminController.getDashboardStats);
+
 // --- User Management ---
 router.get('/users', adminController.getAllUsers);
 router.get('/users/:id', adminController.getUserById);

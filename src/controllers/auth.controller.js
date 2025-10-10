@@ -9,16 +9,23 @@ const logger = require('../utils/logger.js');
 require('dotenv').config();
 
 const generateReferralCode = (name) => {
-  const namePart = name.slice(0, 3).toUpperCase();
-  const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
+  const namePart = name.slice(0, 4).toUpperCase();
+  const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `${namePart}${randomPart}`;
 };
 
+// @route   POST /api/auth/send-otp
+// @desc    Send OTP for user registration
+// @access  Public
 exports.sendOtp = async (req, res) => {
   const { name, email, phone, password, referralCode } = req.body;
 
-  if (!password) {
-    return res.status(400).json({ msg: 'Password is required' });
+  if (!name || !email || !phone || !password) {
+    return res.status(400).json({ msg: 'Please enter all fields' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ msg: 'Password must be at least 6 characters' });
   }
 
   try {
@@ -29,9 +36,12 @@ exports.sendOtp = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpData = { name, email, phone, password, referralCode, otp };
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    await redisClient.set(email, JSON.stringify(otpData), {
+    const otpData = { name, email, phone, password: hashedPassword, referralCode, otp };
+
+    await redisClient.set(`otp:${email}`, JSON.stringify(otpData), {
       EX: 300, // 5 minutes
     });
 
@@ -44,11 +54,14 @@ exports.sendOtp = async (req, res) => {
   }
 };
 
+// @route   POST /api/auth/verify-otp
+// @desc    Verify OTP and create user
+// @access  Public
 exports.verifyOtpAndCreateUser = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
-    const data = await redisClient.get(email);
+    const data = await redisClient.get(`otp:${email}`);
     if (!data) {
       logger.warn(`Invalid or expired OTP attempt for email: ${email}`);
       return res.status(400).json({ msg: 'Invalid or expired OTP' });
@@ -62,14 +75,11 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
 
     const { name, phone, password, referralCode } = otpData;
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     const newUser = new User({
       name,
       email,
       phone,
-      password: hashedPassword,
+      password,
       referralCode: generateReferralCode(name),
     });
 
@@ -78,11 +88,11 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
       if (referringUser) {
         newUser.referredBy = referringUser._id;
         const newReferral = new Referral({
-          referrerId: referringUser._id,
-          referredId: newUser._id,
-          rewardAmount: 100, // Default reward amount
+          referrer: referringUser._id,
+          referredUser: newUser._id,
         });
         await newReferral.save();
+        logger.info(`Referral link established between ${referringUser.email} and ${newUser.email}`);
       } else {
         logger.warn(`Referral code ${referralCode} not found.`);
       }
@@ -93,7 +103,7 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
     const newWallet = new Wallet({ user: newUser._id });
     await newWallet.save();
 
-    await redisClient.del(email);
+    await redisClient.del(`otp:${email}`);
     logger.info(`User created successfully: ${email}`);
 
     const payload = {
@@ -104,7 +114,7 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
+      expiresIn: process.env.JWT_EXPIRES_IN || '1h',
     });
 
     res.status(201).json({ token });
@@ -114,8 +124,15 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
   }
 };
 
+// @route   POST /api/auth/login
+// @desc    Authenticate user and get token
+// @access  Public
 exports.login = async (req, res) => {
   const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ msg: 'Please enter all fields' });
+  }
 
   try {
     let user = await User.findOne({ email });
@@ -138,11 +155,14 @@ exports.login = async (req, res) => {
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
+      expiresIn: process.env.JWT_EXPIRES_IN || '1h',
     });
 
     const io = req.app.get('socketio');
-    io.emit('user online', { userId: user.id, role: user.role });
+    if (io) {
+        io.emit('user online', { userId: user.id, role: user.role });
+    }
+
 
     logger.info(`User logged in successfully: ${email}`);
     res.json({ token });
@@ -152,51 +172,65 @@ exports.login = async (req, res) => {
   }
 };
 
+// @route   POST /api/auth/forgot-password
+// @desc    Send password reset email
+// @access  Public
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (user) {
-        const payload = {
-            user: {
-              id: user.id,
-            },
-          };
-      
-          const token = jwt.sign(payload, process.env.JWT_SECRET, {
-            expiresIn: '15m',
-          });
-      
-          await sendPasswordResetEmail(email, token);
-          logger.info(`Password reset email sent to: ${email}`);
-    } else {
-        logger.warn(`Password reset attempt for non-existent email: ${email}`);
+    const { email } = req.body;
+  
+    try {
+      const user = await User.findOne({ email });
+      if (user) {
+          const payload = {
+              user: {
+                id: user.id,
+              },
+            };
+        
+            const token = jwt.sign(payload, process.env.JWT_SECRET, {
+              expiresIn: '15m',
+            });
+        
+            await sendPasswordResetEmail(email, token);
+            logger.info(`Password reset email sent to: ${email}`);
+      } else {
+          logger.warn(`Password reset attempt for non-existent email: ${email}`);
+      }
+  
+      res.status(200).json({ msg: 'If a user with that email exists, a password reset link has been sent.' });
+    } catch (err) {
+      logger.error(`Error in forgotPassword: ${err.message}`);
+      res.status(500).send('Server error');
     }
-
-    res.status(200).json({ msg: 'If a user with that email exists, a password reset link has been sent.' });
-  } catch (err) {
-    logger.error(`Error in forgotPassword: ${err.message}`);
-    res.status(500).send('Server error');
-  }
-};
-
-exports.resetPassword = async (req, res) => {
-  const { token, password } = req.body;
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.user.id;
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    await User.findByIdAndUpdate(userId, { password: hashedPassword });
-
-    logger.info(`Password has been reset successfully for user ID: ${userId}`);
-    res.status(200).json({ msg: 'Password has been reset successfully.' });
-  } catch (err) {
-    logger.error(`Error in resetPassword: ${err.message}`);
-    res.status(400).json({ msg: 'Invalid or expired token' });
-  }
-};
+  };
+  
+  // @route   POST /api/auth/reset-password
+  // @desc    Reset user's password
+  // @access  Public
+  exports.resetPassword = async (req, res) => {
+    const { token, password } = req.body;
+  
+    if (!token || !password) {
+      return res.status(400).json({ msg: 'Please provide a token and a new password.' });
+    }
+  
+    if (password.length < 6) {
+      return res.status(400).json({ msg: 'Password must be at least 6 characters' });
+    }
+  
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const userId = decoded.user.id;
+  
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+  
+      await User.findByIdAndUpdate(userId, { password: hashedPassword });
+  
+      logger.info(`Password has been reset successfully for user ID: ${userId}`);
+      res.status(200).json({ msg: 'Password has been reset successfully.' });
+    } catch (err) {
+      logger.error(`Error in resetPassword: ${err.message}`);
+      res.status(400).json({ msg: 'Invalid or expired token' });
+    }
+  };
