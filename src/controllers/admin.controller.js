@@ -1,4 +1,3 @@
-
 const User = require('../models/user.model');
 const Store = require('../models/store.model');
 const Offer = require('../models/offer.model');
@@ -9,7 +8,7 @@ const Transaction = require('../models/transaction.model');
 const Referral = require('../models/referral.model');
 const Activity = require('../models/activity.model');
 
-
+// --- Recent Activities ---
 exports.getRecentActivities = async (req, res) => {
   try {
     const activities = await Activity.find().sort({ createdAt: -1 }).limit(10).populate('user', 'name');
@@ -19,6 +18,7 @@ exports.getRecentActivities = async (req, res) => {
   }
 };
 
+// --- Dashboard Stats ---
 exports.getDashboardStats = async (req, res) => {
   try {
     const userCount = await User.countDocuments();
@@ -104,6 +104,14 @@ exports.createStore = async (req, res) => {
     }
     const store = new Store(storeData);
     await store.save();
+
+    const activity = new Activity({
+      type: 'store',
+      message: `New store created: ${store.name}`,
+      user: req.user.id
+    });
+    await activity.save();
+
     res.status(201).json(store);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -147,6 +155,12 @@ exports.createOffer = async (req, res) => {
     }
     const offer = new Offer(offerData);
     await offer.save();
+    const activity = new Activity({
+      type: 'offer',
+      message: `New offer created: ${offer.title}`,
+      user: req.user.id
+    });
+    await activity.save();
     res.status(201).json(offer);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -221,3 +235,4 @@ exports.startChatWithUser = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
