@@ -75,33 +75,56 @@ exports.createContent = async (req, res) => {
 // @desc    Update a content section
 // @access  Admin
 exports.updateContent = async (req, res) => {
-  const { title, slug, content, page, contentType, status } = req.body;
-  
   try {
-    let section = await ContentSection.findById(req.params.id);
-    if (!section) {
-      return res.status(404).json({ msg: 'Content section not found' });
-    }
-    
-    const updateData = { title, slug, page, contentType, status };
-    if (content) {
-      updateData.content = JSON.parse(content);
-    }
-    if (req.file) {
-        updateData.imageUrl = req.file.path;
+    const { id } = req.params;
+    const { title, slug, page, contentType, status, content } = req.body;
+
+    // Check if a different content section already uses the new slug
+    if (slug) {
+      const existingContent = await Content.findOne({ slug, _id: { $ne: id } });
+      if (existingContent) {
+        return res.status(400).json({ msg: 'Content with this slug already exists' });
+      }
     }
 
-    section = await ContentSection.findByIdAndUpdate(
-        req.params.id,
-        { $set: updateData },
-        { new: true }
+    const updatedData = {
+      title,
+      slug,
+      page,
+      contentType,
+      status,
+      content,
+    };
+
+    // Handle file upload if a new image is provided
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'content',
+      });
+      updatedData.imageUrl = result.secure_url;
+    }
+
+    // Remove undefined fields so they don't overwrite existing data
+    Object.keys(updatedData).forEach(key => updatedData[key] === undefined && delete updatedData[key]);
+
+
+    const updatedContent = await Content.findByIdAndUpdate(
+      id,
+      updatedData,
+      { new: true }
     );
-    res.json(section);
-  } catch (err) {
-    logger.error('Error in updateContent:', { error: err.message, stack: err.stack });
-    res.status(500).send('Server Error');
+
+    if (!updatedContent) {
+      return res.status(404).json({ msg: 'Content not found' });
+    }
+
+    res.status(200).json(updatedContent);
+  } catch (error) {
+    logger.error(`Error updating content: ${error.message}`);
+    res.status(500).json({ msg: 'Server error' });
   }
 };
+
 
 // @route   DELETE /api/admin/content/:id
 // @desc    Delete a content section
