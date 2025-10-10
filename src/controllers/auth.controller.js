@@ -61,7 +61,7 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
-    const data = await redisClient.get(`otp:${email}`);
+    const data = await redisClient.get(email);
     if (!data) {
       logger.warn(`Invalid or expired OTP attempt for email: ${email}`);
       return res.status(400).json({ msg: 'Invalid or expired OTP' });
@@ -75,11 +75,14 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
 
     const { name, phone, password, referralCode } = otpData;
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     const newUser = new User({
       name,
       email,
       phone,
-      password,
+      password: hashedPassword,
       referralCode: generateReferralCode(name),
     });
 
@@ -88,11 +91,11 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
       if (referringUser) {
         newUser.referredBy = referringUser._id;
         const newReferral = new Referral({
-          referrer: referringUser._id,
-          referredUser: newUser._id,
+          referrerId: referringUser._id,
+          referredId: newUser._id,
+          rewardAmount: 100, // Default reward amount
         });
         await newReferral.save();
-        logger.info(`Referral link established between ${referringUser.email} and ${newUser.email}`);
       } else {
         logger.warn(`Referral code ${referralCode} not found.`);
       }
@@ -103,7 +106,14 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
     const newWallet = new Wallet({ user: newUser._id });
     await newWallet.save();
 
-    await redisClient.del(`otp:${email}`);
+    const activity = new Activity({
+      type: 'user',
+      message: `New user registration: ${newUser.email}`,
+      user: newUser._id,
+    });
+    await activity.save();
+
+    await redisClient.del(email);
     logger.info(`User created successfully: ${email}`);
 
     const payload = {
@@ -114,7 +124,7 @@ exports.verifyOtpAndCreateUser = async (req, res) => {
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '1h',
+      expiresIn: process.env.JWT_EXPIRES_IN,
     });
 
     res.status(201).json({ token });

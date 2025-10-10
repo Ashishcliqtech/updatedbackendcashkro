@@ -41,6 +41,13 @@ exports.handlePurchaseWebhook = async (req, res) => {
             { $inc: { pendingCashback: cashbackAmount, totalCashback: cashbackAmount } }
         );
 
+        const activity = new Activity({
+            type: 'transaction',
+            message: `New transaction of ${cashbackAmount} for user ${click.user}`,
+            user: click.user
+          });
+        await activity.save();
+
         logger.info(`Pending cashback of ${cashbackAmount} created for user ${click.user} from transaction ${transactionId}`);
         res.status(200).json({ msg: 'Webhook received and processed' });
 

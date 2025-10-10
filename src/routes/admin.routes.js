@@ -12,6 +12,7 @@ const upload = require('../middleware/upload.middleware');
 router.use(authMiddleware, adminMiddleware);
 
 router.get('/stats', adminController.getDashboardStats);
+router.get('/activities', adminController.getRecentActivities);
 
 // --- User Management ---
 router.get('/users', adminController.getAllUsers);

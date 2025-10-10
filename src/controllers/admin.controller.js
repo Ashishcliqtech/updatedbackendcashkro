@@ -7,6 +7,17 @@ const Conversation = require('../models/conversation.model');
 const Click = require('../models/click.model');
 const Transaction = require('../models/transaction.model');
 const Referral = require('../models/referral.model');
+const Activity = require('../models/activity.model');
+
+
+exports.getRecentActivities = async (req, res) => {
+  try {
+    const activities = await Activity.find().sort({ createdAt: -1 }).limit(10).populate('user', 'name');
+    res.json(activities);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 exports.getDashboardStats = async (req, res) => {
   try {
