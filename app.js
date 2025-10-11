@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -41,6 +40,8 @@ app.use('/api/chat', require('./src/routes/chat.routes')(notificationService));
 app.use('/api/online', require('./src/routes/online.routes'));
 app.use('/api/ai', require('./src/routes/ai.routes'));
 app.use('/api/search', require('./src/routes/search.routes'));
+app.use('/api/contact', require('./src/routes/contact.routes'));
+app.use('/api/support', require('./src/routes/support.routes'));
 
 // Admin Routes
 app.use('/api/admin', require('./src/routes/admin.routes'));

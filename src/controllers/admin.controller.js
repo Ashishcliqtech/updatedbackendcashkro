@@ -7,6 +7,11 @@ const Click = require('../models/click.model');
 const Transaction = require('../models/transaction.model');
 const Referral = require('../models/referral.model');
 const Activity = require('../models/activity.model');
+const ContactInquiry = require('../models/contactInquiry.model');
+const SupportTicket = require('../models/supportTicket.model');
+const TicketMessage = require('../models/ticketMessage.model');
+const { sendEmail } = require('../utils/email');
+
 
 // --- Recent Activities ---
 exports.getRecentActivities = async (req, res) => {
@@ -236,3 +241,101 @@ exports.startChatWithUser = async (req, res) => {
   }
 };
 
+// --- Contact Inquiry Management ---
+exports.getContactInquiries = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, unread } = req.query;
+    const query = {};
+    if (unread) {
+      query.is_read = false;
+    }
+    const inquiries = await ContactInquiry.find(query)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+    const count = await ContactInquiry.countDocuments(query);
+    res.json({ inquiries, totalPages: Math.ceil(count / limit), currentPage: page });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateContactInquiry = async (req, res) => {
+  try {
+    const inquiry = await ContactInquiry.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!inquiry) return res.status(404).json({ message: 'Inquiry not found' });
+    res.json(inquiry);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+
+// --- Support Ticket Management ---
+exports.getAllSupportTickets = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const query = {};
+    if (status) {
+      query.status = status;
+    }
+    const tickets = await SupportTicket.find(query)
+      .populate('user', 'name email')
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+    const count = await SupportTicket.countDocuments(query);
+    res.json({ tickets, totalPages: Math.ceil(count / limit), currentPage: page });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getSupportTicketById = async (req, res) => {
+  try {
+    const ticket = await SupportTicket.findById(req.params.id).populate('user', 'name email');
+    if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
+    const messages = await TicketMessage.find({ ticket: req.params.id }).populate('user', 'name email');
+    res.json({ ticket, messages });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateSupportTicket = async (req, res) => {
+  try {
+    const ticket = await SupportTicket.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
+    res.json(ticket);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+exports.addSupportTicketMessage = async (req, res) => {
+  try {
+    const { message } = req.body;
+    const ticket = await SupportTicket.findById(req.params.id).populate('user', 'name email');
+    if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
+
+    const newMessage = new TicketMessage({
+      ticket: req.params.id,
+      user: req.user.id, // Admin user ID
+      message
+    });
+    await newMessage.save();
+
+    ticket.updated_at = Date.now();
+    await ticket.save();
+
+    // Send email notification to the user
+    const userEmail = ticket.user.email;
+    const emailSubject = `New reply to your support ticket: ${ticket.subject}`;
+    const emailBody = `A support agent has replied to your ticket:\n\n${message}`;
+    await sendEmail(userEmail, emailSubject, emailBody);
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin.controller');
@@ -48,5 +47,15 @@ router.delete('/content/:id', contentController.deleteContent);
 // --- Notification Management ---
 router.post('/notifications/send', adminController.sendNotification);
 router.get('/notifications/stats', adminController.getNotificationStats);
+
+// --- Contact Inquiry Management ---
+router.get('/contact-inquiries', adminController.getContactInquiries);
+router.patch('/contact-inquiries/:id', adminController.updateContactInquiry);
+
+// --- Support Ticket Management ---
+router.get('/support/tickets', adminController.getAllSupportTickets);
+router.get('/support/tickets/:id', adminController.getSupportTicketById);
+router.patch('/support/tickets/:id', adminController.updateSupportTicket);
+router.post('/support/tickets/:id/messages', adminController.addSupportTicketMessage);
 
 module.exports = router;
