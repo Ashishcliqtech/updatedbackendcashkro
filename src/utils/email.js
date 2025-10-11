@@ -72,4 +72,9 @@ async function sendPasswordResetEmail(to, token) {
   return sendEmail({ to, subject: "Reset Your Password", htmlContent: emailHtml });
 }
 
-module.exports = { sendOtpEmail, sendPasswordResetEmail };
+async function sendSupportEmail(to, subject, textContent) {
+    const htmlContent = `<p>${textContent.replace(/\n/g, '<br>')}</p>`;
+    return sendEmail({ to, subject, htmlContent });
+}
+
+module.exports = { sendOtpEmail, sendPasswordResetEmail, sendSupportEmail };

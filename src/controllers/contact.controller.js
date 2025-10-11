@@ -1,5 +1,5 @@
 const ContactInquiry = require('../models/contactInquiry.model');
-const { sendEmail } = require('../utils/email');
+const { sendSupportEmail } = require('../utils/email');
 
 exports.submitInquiry = async (req, res) => {
   try {
@@ -16,7 +16,7 @@ exports.submitInquiry = async (req, res) => {
     const adminEmail = process.env.SENDER_EMAIL || 'YOUR_ADMIN_EMAIL@example.com';
     const emailSubject = 'New Contact Inquiry';
     const emailBody = `You have a new contact inquiry from ${name} (${email}):\n\n${message}`;
-    await sendEmail(adminEmail, emailSubject, emailBody);
+    await sendSupportEmail(adminEmail, emailSubject, emailBody);
 
     res.status(201).json({ message: 'Your inquiry has been submitted successfully.' });
   } catch (error) {

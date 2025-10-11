@@ -1,6 +1,6 @@
 const SupportTicket = require('../models/supportTicket.model');
 const TicketMessage = require('../models/ticketMessage.model');
-const { sendEmail } = require('../utils/email');
+const { sendSupportEmail } = require('../utils/email');
 
 // User-facing controllers
 exports.createTicket = async (req, res) => {
@@ -22,7 +22,7 @@ exports.createTicket = async (req, res) => {
     const adminEmail = process.env.SENDER_EMAIL || 'YOUR_ADMIN_EMAIL@example.com';
     const emailSubject = `New Support Ticket: ${subject}`;
     const emailBody = `A new support ticket has been created by user ${userId}:\n\n${message}`;
-    await sendEmail(adminEmail, emailSubject, emailBody);
+    await sendSupportEmail(adminEmail, emailSubject, emailBody);
 
     res.status(201).json(newTicket);
   } catch (error) {
@@ -82,7 +82,7 @@ exports.addMessage = async (req, res) => {
     const adminEmail = process.env.SENDER_EMAIL || 'YOUR_ADMIN_EMAIL@example.com';
     const emailSubject = `New message in ticket: ${ticket.subject}`;
     const emailBody = `User ${userId} added a new message to ticket ${ticketId}:\n\n${message}`;
-    await sendEmail(adminEmail, emailSubject, emailBody);
+    await sendSupportEmail(adminEmail, emailSubject, emailBody);
 
     res.status(201).json(newMessage);
   } catch (error) {
