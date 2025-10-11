@@ -74,6 +74,9 @@ exports.createContent = async (req, res) => {
 // @route   PUT /api/admin/content/:id
 // @desc    Update a content section
 // @access  Admin
+// @route   PUT /api/admin/content/:id
+// @desc    Update a content section
+// @access  Admin
 exports.updateContent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -81,7 +84,7 @@ exports.updateContent = async (req, res) => {
 
     // Check if a different content section already uses the new slug
     if (slug) {
-      const existingContent = await Content.findOne({ slug, _id: { $ne: id } });
+      const existingContent = await ContentSection.findOne({ slug, _id: { $ne: id } });
       if (existingContent) {
         return res.status(400).json({ msg: 'Content with this slug already exists' });
       }
@@ -93,11 +96,22 @@ exports.updateContent = async (req, res) => {
       page,
       contentType,
       status,
-      content,
     };
+
+    // The 'content' field might be a JSON string, so parse it.
+    if (content) {
+        try {
+            updatedData.content = JSON.parse(content);
+        } catch (e) {
+            // If it's not a valid JSON string, use it as is.
+            updatedData.content = content;
+        }
+    }
+
 
     // Handle file upload if a new image is provided
     if (req.file) {
+      // Assuming you have cloudinary setup
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: 'content',
       });
@@ -108,9 +122,9 @@ exports.updateContent = async (req, res) => {
     Object.keys(updatedData).forEach(key => updatedData[key] === undefined && delete updatedData[key]);
 
 
-    const updatedContent = await Content.findByIdAndUpdate(
+    const updatedContent = await ContentSection.findByIdAndUpdate(
       id,
-      updatedData,
+      { $set: updatedData }, // Use $set to prevent overwriting the whole document
       { new: true }
     );
 
