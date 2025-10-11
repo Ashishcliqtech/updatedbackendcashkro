@@ -10,7 +10,7 @@ const Activity = require('../models/activity.model');
 const ContactInquiry = require('../models/contactInquiry.model');
 const SupportTicket = require('../models/supportTicket.model');
 const TicketMessage = require('../models/ticketMessage.model');
-const { sendEmail } = require('../utils/email');
+const { sendSupportEmail } = require('../utils/email');
 
 
 // --- Recent Activities ---
@@ -332,7 +332,7 @@ exports.addSupportTicketMessage = async (req, res) => {
     const userEmail = ticket.user.email;
     const emailSubject = `New reply to your support ticket: ${ticket.subject}`;
     const emailBody = `A support agent has replied to your ticket:\n\n${message}`;
-    await sendEmail(userEmail, emailSubject, emailBody);
+    await sendSupportEmail(userEmail, emailSubject, emailBody);
 
     res.status(201).json(newMessage);
   } catch (error) {
