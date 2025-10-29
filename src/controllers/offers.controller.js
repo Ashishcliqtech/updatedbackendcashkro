@@ -5,6 +5,7 @@ const Wallet = require('../models/wallet.model'); // Added Wallet model
 const Activity = require('../models/activity.model'); // Added Activity model
 const { v4: uuidv4 } = require('uuid'); 
 const logger = require('../utils/logger');
+const { calculateCashback } = require('../utils/cashbackCalculator');
 
 /**
  * Helper function to create a pending transaction and update the wallet immediately upon click.
@@ -17,43 +18,56 @@ const createPendingCashback = async (userId, offer, clickId) => {
         // --- BEST PRACTICE NOTE ---
         // In a real system, the actual purchase amount is unknown at the time of click.
         // For demonstration/testing, we use a placeholder amount (e.g., 500)
-        // or the offer's default minimum value, and the cashback rate.
-        const mockPurchaseAmount = 500; // Mock purchase for testing purposes
+        const mockPurchaseAmount = 500; // Mock purchase for immediate pending status
         
         // Ensure offer object is fully populated before calculating
-        if (!offer || !offer.store || typeof offer.cashbackRate !== 'number') {
+        if (!offer || !offer.store || !offer.category || typeof offer.cashbackRate !== 'number') {
             logger.error('Cannot create pending cashback: Missing offer details or cashback rate.', { offerId: offer._id });
             return null;
         }
+        
+        // Calculate the NET cashback based on mock purchase and default rules
+        const calculationResult = calculateCashback(
+            mockPurchaseAmount, 
+            'Bronze', 
+            offer.category.name 
+        );
+        
+        if (!calculationResult.isEligible) {
+            logger.warn(`Click event ineligible for mock pending cashback. Reason: ${calculationResult.details}`);
+            return null;
+        }
 
-        const cashbackAmount = (mockPurchaseAmount * offer.cashbackRate) / 100;
+        const { netCashback, grossCashback, platformFee } = calculationResult;
 
         // 1. Create a PENDING transaction
         const newTransaction = new Transaction({
             user: userId,
-            amount: cashbackAmount,
+            amount: netCashback, // Storing the NET amount for consistency
             type: 'credit',
             status: 'pending', 
-            description: `PENDING Cashback from click on ${offer.store.name} (Mock Purchase: ${mockPurchaseAmount})`,
+            description: 
+                `PENDING from click on ${offer.store.name} (Mock: ${mockPurchaseAmount.toFixed(2)}) ` +
+                `| Gross: ${grossCashback.toFixed(2)} | Fee: ${platformFee.toFixed(2)} | Net: ${netCashback.toFixed(2)}`,
         });
         await newTransaction.save();
         
         // 2. Update the user's wallet: increment pendingCashback and totalCashback
         await Wallet.findOneAndUpdate(
             { user: userId },
-            { $inc: { pendingCashback: cashbackAmount, totalCashback: cashbackAmount } },
+            { $inc: { pendingCashback: netCashback, totalCashback: netCashback } },
             { new: true, upsert: true }
         );
 
         // 3. Log activity
         const activity = new Activity({
             type: 'transaction',
-            message: `New PENDING cashback of ${cashbackAmount} created for user ${userId} on click (Offer: ${offer._id})`,
+            message: `New PENDING NET cashback of ${netCashback.toFixed(2)} created for user ${userId} on click (Offer: ${offer._id})`,
             user: userId
         });
         await activity.save();
 
-        logger.info(`Pending transaction created on click. User: ${userId}, Amount: ${cashbackAmount}`);
+        logger.info(`Pending transaction created on click. User: ${userId}, Net Amount: ${netCashback.toFixed(2)}`);
         return newTransaction;
     } catch (error) {
         logger.error('Error creating pending cashback on click:', { error: error.message, stack: error.stack });

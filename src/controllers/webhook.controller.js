@@ -2,15 +2,18 @@
 const Click = require('../models/click.model');
 const Transaction = require('../models/transaction.model');
 const Wallet = require('../models/wallet.model');
-const Offer = require('../models/offer.model');
+const Offer = require('../models/offer.model'); 
 const User = require('../models/user.model');
 const Referral = require('../models/referral.model');
 const Activity = require('../models/activity.model'); 
 const logger = require('../utils/logger');
+const { calculateCashback } = require('../utils/cashbackCalculator'); 
 
-// --- Helper function for robust purchase status update ---
+
+
 const updateTransactionStatus = async (transactionId, newStatus, webhookSource) => {
     try {
+        // Find transaction by searching the partner's transactionId in the description
         const transaction = await Transaction.findOne({ description: new RegExp(`.*${transactionId}.*`), type: 'credit', status: 'pending' });
 
         if (!transaction) {
@@ -22,9 +25,11 @@ const updateTransactionStatus = async (transactionId, newStatus, webhookSource) 
         transaction.status = newStatus;
         transaction.description = `[${webhookSource} - ${newStatus.toUpperCase()}] ${transaction.description}`;
         await transaction.save();
+        
+        // The transaction.amount here is the NET CASHBACK that was previously calculated.
 
         if (newStatus === 'confirmed') {
-            // Move funds from pending to available only if approved
+            // Move funds from pending to available (Net Cashback)
             await Wallet.findOneAndUpdate(
                 { user: transaction.user },
                 { 
@@ -64,26 +69,28 @@ const updateTransactionStatus = async (transactionId, newStatus, webhookSource) 
 // @desc    Handle cashback notification from affiliate partner (Initial Purchase)
 exports.handlePurchaseWebhook = async (req, res) => {
     // IMPORTANT: Security Check - Implement a secret key verification here
-    const { clickId, purchaseAmount, transactionId } = req.body;
+    // Assumes webhook sends the clickId, the gross purchase value, and the partner's unique ID
+    const { clickId, purchaseAmount, transactionId, merchantCategory, userTier } = req.body;
 
     if (!clickId || !purchaseAmount || !transactionId) {
         logger.warn('Webhook payload missing required fields.');
-        return res.status(400).json({ msg: 'Missing required webhook data' });
+        return res.status(400).json({ msg: 'Missing required webhook data: clickId, purchaseAmount, or transactionId' });
     }
 
     try {
         // 1. Find the user/offer/store associated with the clickId
         const click = await Click.findOne({ clickId }).populate({
             path: 'offer',
+            // IMPORTANT: Populate category to get context for dynamic rules
             populate: {
-                path: 'store', 
+                path: 'category', 
                 select: 'name'
             }
-        });
+        }).populate('offer.store');
         
-        if (!click) {
-            logger.warn(`Webhook received for unknown or expired clickId: ${clickId}. Ignoring.`);
-            return res.status(202).json({ msg: 'Click not found, logged as warning' }); 
+        if (!click || !click.offer) {
+            logger.warn(`Webhook received for unknown, expired, or missing offer details for clickId: ${clickId}. Ignoring.`);
+            return res.status(202).json({ msg: 'Click/Offer not found, logged as warning' }); 
         }
 
         // 2. Check for duplicate transaction (using partner's transactionId in the description)
@@ -94,41 +101,66 @@ exports.handlePurchaseWebhook = async (req, res) => {
             return res.status(202).json({ msg: 'Duplicate transaction received' });
         }
 
-        // 3. Calculate cashback amount
-        if (!click.offer || typeof click.offer.cashbackRate !== 'number') {
-            logger.error(`Offer details or cashbackRate missing for clickId: ${clickId}`);
-            return res.status(400).json({ msg: 'Offer data missing for calculation' });
-        }
-        
-        const cashbackAmount = (purchaseAmount * click.offer.cashbackRate) / 100;
+        // 3. Determine Inputs for Calculator
+        const effectiveUserTier = userTier || 'Bronze'; // Fallback tier
+        // Use webhook provided category, or fallback to the offer's category name
+        const effectiveMerchantCategory = merchantCategory || (click.offer.category ? click.offer.category.name : 'Default');
 
-        // 4. Create a PENDING transaction
+        // 4. Calculate cashback amount using the dynamic rules
+        const calculationResult = calculateCashback(
+            purchaseAmount, 
+            effectiveUserTier, 
+            effectiveMerchantCategory
+        );
+
+        if (!calculationResult.isEligible) {
+            logger.warn(`Transaction ineligible for cashback. Reason: ${calculationResult.details}`);
+            return res.status(202).json({ msg: 'Transaction ineligible for cashback.', details: calculationResult.details });
+        }
+
+        const { netCashback, grossCashback, platformFee } = calculationResult;
+
+        // 5. Create a PENDING transaction (Amount stored is the final NET amount for the user)
         const newTransaction = new Transaction({
             user: click.user,
-            amount: cashbackAmount,
+            amount: netCashback, // Storing the NET amount the user receives
             type: 'credit',
             status: 'pending', 
-            description: `Order #${transactionId} cashback at ${click.offer.store.name} (Click ID: ${clickId})`,
+            description: 
+                `Order #${transactionId} cashback at ${click.offer.store.name} ` +
+                `| Gross: ${grossCashback.toFixed(2)} | Fee: ${platformFee.toFixed(2)} | Net: ${netCashback.toFixed(2)} ` + 
+                `(Click ID: ${clickId})`,
         });
         await newTransaction.save();
         
-        // 5. Update the user's wallet: increment pendingCashback and totalCashback
+        // 6. Update the user's wallet: increment pendingCashback and totalCashback
+        // We update wallet balances with the final NET amount.
         await Wallet.findOneAndUpdate(
             { user: click.user },
-            { $inc: { pendingCashback: cashbackAmount, totalCashback: cashbackAmount } },
+            { 
+                $inc: { 
+                    pendingCashback: netCashback, 
+                    totalCashback: netCashback 
+                } 
+            },
             { new: true, upsert: true }
         );
 
-        // 6. Log activity
+        // 7. Log activity
         const activity = new Activity({
             type: 'transaction',
-            message: `New PENDING cashback of ${cashbackAmount} created for user ${click.user} (Order ${transactionId})`,
+            message: `New PENDING NET cashback of ${netCashback.toFixed(2)} created for user ${click.user} (Order ${transactionId})`,
             user: click.user
           });
         await activity.save();
 
-        logger.info(`Pending cashback of ${cashbackAmount} created for user ${click.user} from transaction ${transactionId}`);
-        res.status(201).json({ msg: 'Purchase received. Pending transaction created for admin review.' });
+        logger.info(`Pending cashback created. User: ${click.user}, Net Amount: ${netCashback.toFixed(2)}`);
+        res.status(201).json({ 
+            msg: 'Purchase received. Pending transaction created.', 
+            netCashback: netCashback.toFixed(2),
+            grossCashback: grossCashback.toFixed(2),
+            platformFee: platformFee.toFixed(2)
+        });
 
     } catch (err) {
         logger.error('Error in handlePurchaseWebhook:', { error: err.message, stack: err.stack });
