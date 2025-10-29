@@ -1,7 +1,65 @@
 const Offer = require('../models/offer.model');
 const Click = require('../models/click.model.js'); 
+const Transaction = require('../models/transaction.model'); // Added Transaction model
+const Wallet = require('../models/wallet.model'); // Added Wallet model
+const Activity = require('../models/activity.model'); // Added Activity model
 const { v4: uuidv4 } = require('uuid'); 
 const logger = require('../utils/logger');
+
+/**
+ * Helper function to create a pending transaction and update the wallet immediately upon click.
+ * NOTE: This implementation assumes a mock purchase amount or requires the client to pass
+ * the expected amount if a click-to-pending model is used.
+ * For this best practice update, we are using a placeholder amount.
+ */
+const createPendingCashback = async (userId, offer, clickId) => {
+    try {
+        // --- BEST PRACTICE NOTE ---
+        // In a real system, the actual purchase amount is unknown at the time of click.
+        // For demonstration/testing, we use a placeholder amount (e.g., 500)
+        // or the offer's default minimum value, and the cashback rate.
+        const mockPurchaseAmount = 500; // Mock purchase for testing purposes
+        
+        // Ensure offer object is fully populated before calculating
+        if (!offer || !offer.store || typeof offer.cashbackRate !== 'number') {
+            logger.error('Cannot create pending cashback: Missing offer details or cashback rate.', { offerId: offer._id });
+            return null;
+        }
+
+        const cashbackAmount = (mockPurchaseAmount * offer.cashbackRate) / 100;
+
+        // 1. Create a PENDING transaction
+        const newTransaction = new Transaction({
+            user: userId,
+            amount: cashbackAmount,
+            type: 'credit',
+            status: 'pending', 
+            description: `PENDING Cashback from click on ${offer.store.name} (Mock Purchase: ${mockPurchaseAmount})`,
+        });
+        await newTransaction.save();
+        
+        // 2. Update the user's wallet: increment pendingCashback and totalCashback
+        await Wallet.findOneAndUpdate(
+            { user: userId },
+            { $inc: { pendingCashback: cashbackAmount, totalCashback: cashbackAmount } },
+            { new: true, upsert: true }
+        );
+
+        // 3. Log activity
+        const activity = new Activity({
+            type: 'transaction',
+            message: `New PENDING cashback of ${cashbackAmount} created for user ${userId} on click (Offer: ${offer._id})`,
+            user: userId
+        });
+        await activity.save();
+
+        logger.info(`Pending transaction created on click. User: ${userId}, Amount: ${cashbackAmount}`);
+        return newTransaction;
+    } catch (error) {
+        logger.error('Error creating pending cashback on click:', { error: error.message, stack: error.stack });
+        return null;
+    }
+};
 
 // @route   GET /api/offers
 // @desc    Get all offers with filtering and pagination
@@ -120,21 +178,21 @@ exports.getOfferById = async (req, res) => {
 };
 
 // @route   POST /api/offers/:id/track
-// @desc    Tracks a user's click on an offer and redirects
+// @desc    Tracks a user's click on an offer, creates a PENDING transaction, and redirects
 // @access  Authenticated
 exports.trackOfferClick = async (req, res) => {
     try {
         const offerId = req.params.id;
-        // Ensure user is logged in (auth middleware handles this, req.user.id is mandatory here)
         const userId = req.user.id; 
 
+        // Populate store along with the offer to ensure data integrity
         const offer = await Offer.findById(offerId).populate('store');
         if (!offer) {
             logger.warn(`trackOfferClick: Offer not found for ID ${offerId}`);
             return res.status(404).json({ msg: 'Offer not found' });
         }
 
-        // 1. Generate a unique ID for this specific click (used as sub-ID)
+        // 1. Generate a unique ID for this specific click
         const clickId = uuidv4();
 
         // 2. Create the Click record linking the user to the offer/store
@@ -146,18 +204,25 @@ exports.trackOfferClick = async (req, res) => {
         });
         await newClick.save();
         
-        // 3. Construct the final affiliate URL with the clickId for tracking
+        // 3. *** NEW LOGIC: Create PENDING Transaction on Click ***
+        // Only attempt to create cashback if the offer type is 'cashback'
+        if (offer.offerType === 'cashback') {
+            await createPendingCashback(userId, offer, clickId);
+        } else {
+            logger.info(`Offer ${offerId} is not a cashback type (${offer.offerType}). Skipping pending transaction creation.`);
+        }
+
+
+        // 4. Construct the final affiliate URL with the clickId for tracking
         const baseUrl = offer.url || offer.store.url;
         let trackingUrl;
 
         try {
             trackingUrl = new URL(baseUrl);
-            // Append the unique clickId to the URL. 'subid' is a common parameter name.
             trackingUrl.searchParams.append('subid', clickId); 
         } catch (e) {
-            // Handle case where offer URL might be malformed
              logger.error(`Error processing URL for offer ${offerId}: ${e.message}`);
-             trackingUrl = { href: baseUrl }; // Fallback to raw URL
+             trackingUrl = { href: baseUrl }; 
         }
 
 
