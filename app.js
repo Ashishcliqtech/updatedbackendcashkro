@@ -6,6 +6,7 @@ const { initSocket } = require('./src/utils/socket');
 const { initChat } = require('./src/utils/chat');
 const onlineController = require('./src/controllers/online.controller');
 const NotificationService = require('./src/services/notification.service');
+const { startKeepAlive } = require('./src/utils/keepAlive');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,6 +26,8 @@ onlineController.setup(io);
 const notificationService = new NotificationService(io);
 notificationService.init();
 
+startKeepAlive();
+
 // Define Routes
 app.use('/api/auth', require('./src/routes/auth.routes'));
 app.use('/api/user', require('./src/routes/user.routes'));
@@ -42,6 +45,7 @@ app.use('/api/ai', require('./src/routes/ai.routes'));
 app.use('/api/search', require('./src/routes/search.routes'));
 app.use('/api/contact', require('./src/routes/contact.routes'));
 app.use('/api/support', require('./src/routes/support.routes'));
+app.use('/api/health', require('./src/routes/health.routes.js'));
 
 // Admin Routes
 app.use('/api/admin', require('./src/routes/admin.routes'));
