@@ -120,26 +120,13 @@ exports.getOfferById = async (req, res) => {
 };
 
 // @route   POST /api/offers/:id/track
-// @desc    Tracks a user's click on an offer
-// @access  Public (or Authenticated)
-exports.trackOfferClick = async (req, res) => {
-    try {
-        // In a real application, you would log this click event to a separate
-        // analytics service or a dedicated collection. For simplicity, we can
-        // increment a counter on the offer itself if one exists.
-        // e.g., await Offer.findByIdAndUpdate(req.params.id, { $inc: { clicks: 1 } });
-        logger.info(`Offer ${req.params.id} clicked by user ${req.user ? req.user.id : 'guest'}`);
-        res.status(200).json({ msg: 'Click tracked' });
-    } catch (err) {
-        logger.error('Error in trackOfferClick:', { error: err.message, stack: err.stack });
-        res.status(500).send('Server Error');
-    }
-};
-
+// @desc    Tracks a user's click on an offer and redirects
+// @access  Authenticated
 exports.trackOfferClick = async (req, res) => {
     try {
         const offerId = req.params.id;
-        const userId = req.user.id;
+        // Ensure user is logged in (auth middleware handles this, req.user.id is mandatory here)
+        const userId = req.user.id; 
 
         const offer = await Offer.findById(offerId).populate('store');
         if (!offer) {
@@ -147,8 +134,10 @@ exports.trackOfferClick = async (req, res) => {
             return res.status(404).json({ msg: 'Offer not found' });
         }
 
+        // 1. Generate a unique ID for this specific click (used as sub-ID)
         const clickId = uuidv4();
 
+        // 2. Create the Click record linking the user to the offer/store
         const newClick = new Click({
             user: userId,
             offer: offerId,
@@ -157,13 +146,24 @@ exports.trackOfferClick = async (req, res) => {
         });
         await newClick.save();
         
-        // Construct the final affiliate URL with the clickId as a sub-identifier
-        // The offer's specific URL is used as the base.
+        // 3. Construct the final affiliate URL with the clickId for tracking
         const baseUrl = offer.url || offer.store.url;
-        const trackingUrl = new URL(baseUrl);
-        trackingUrl.searchParams.append('subid', clickId); // Standard parameter, might vary
+        let trackingUrl;
 
-        logger.info(`Offer ${offerId} clicked by user ${userId} with clickId ${clickId}`);
+        try {
+            trackingUrl = new URL(baseUrl);
+            // Append the unique clickId to the URL. 'subid' is a common parameter name.
+            trackingUrl.searchParams.append('subid', clickId); 
+        } catch (e) {
+            // Handle case where offer URL might be malformed
+             logger.error(`Error processing URL for offer ${offerId}: ${e.message}`);
+             trackingUrl = { href: baseUrl }; // Fallback to raw URL
+        }
+
+
+        logger.info(`Offer ${offerId} clicked by user ${userId} with clickId ${clickId}. Redirecting to: ${trackingUrl.href}`);
+        
+        // Respond with the URL for the frontend to handle redirection
         res.status(200).json({ redirectUrl: trackingUrl.href });
 
     } catch (err) {

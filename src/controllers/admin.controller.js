@@ -347,15 +347,25 @@ exports.addSupportTicketMessage = async (req, res) => {
 exports.getPendingTransactions = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
+    const limitNum = parseInt(limit, 10);
+    const pageNum = parseInt(page, 10);
+
     // Only fetch pending credit transactions (cashback)
     const transactions = await Transaction.find({ status: 'pending', type: 'credit' })
-      .populate('user', 'name email')
+      .populate('user', 'name email') // FIXED: Ensuring user data is populated
       .sort({ createdAt: 1 }) // FIFO for processing
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
       .exec();
+
     const count = await Transaction.countDocuments({ status: 'pending', type: 'credit' });
-    res.json({ transactions, totalPages: Math.ceil(count / limit), currentPage: page, total: count });
+
+    res.json({
+        transactions,
+        totalPages: Math.ceil(count / limitNum),
+        currentPage: pageNum,
+        total: count 
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
