@@ -10,6 +10,7 @@ const Activity = require('../models/activity.model');
 const ContactInquiry = require('../models/contactInquiry.model');
 const SupportTicket = require('../models/supportTicket.model');
 const TicketMessage = require('../models/ticketMessage.model');
+const Wallet = require('../models/wallet.model');
 const { sendSupportEmail } = require('../utils/email');
 
 
@@ -338,4 +339,165 @@ exports.addSupportTicketMessage = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+// @route   GET /api/admin/transactions/pending
+// @desc    Get all pending cashback transactions
+// @access  Admin
+exports.getPendingTransactions = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    // Only fetch pending credit transactions (cashback)
+    const transactions = await Transaction.find({ status: 'pending', type: 'credit' })
+      .populate('user', 'name email')
+      .sort({ createdAt: 1 }) // FIFO for processing
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+    const count = await Transaction.countDocuments({ status: 'pending', type: 'credit' });
+    res.json({ transactions, totalPages: Math.ceil(count / limit), currentPage: page, total: count });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @route   POST /api/admin/transactions/:id/approve
+// @desc    Approve a pending cashback transaction
+// @access  Admin
+exports.approveTransaction = async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id);
+
+    if (!transaction || transaction.status !== 'pending' || transaction.type !== 'credit') {
+      return res.status(404).json({ message: 'Pending credit transaction not found' });
+    }
+
+    // Update transaction status
+    transaction.status = 'confirmed';
+    await transaction.save();
+
+    // Update wallet: move amount from pending to available
+    await Wallet.findOneAndUpdate(
+      { user: transaction.user },
+      { 
+        $inc: {
+          pendingCashback: -transaction.amount,
+          availableCashback: transaction.amount,
+        }
+      }
+    );
+    
+    // Log activity
+    const activity = new Activity({
+      type: 'transaction',
+      message: `Admin ${req.user.id} approved cashback of ${transaction.amount} for user ${transaction.user}`,
+      user: req.user.id
+    });
+    await activity.save();
+
+    res.json({ message: 'Transaction approved and cashback moved to available balance.', transaction });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @route   POST /api/admin/transactions/:id/reject
+// @desc    Reject a pending cashback transaction
+// @access  Admin
+exports.rejectTransaction = async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id);
+
+    if (!transaction || transaction.status !== 'pending' || transaction.type !== 'credit') {
+      return res.status(404).json({ message: 'Pending credit transaction not found' });
+    }
+    
+    const { rejectionReason } = req.body;
+
+    // Update transaction status to failed
+    transaction.status = 'failed';
+    transaction.description = `${transaction.description} (Rejected: ${rejectionReason || 'No reason provided'})`;
+    await transaction.save();
+
+    // Only remove from pendingCashback. We don't touch totalCashback here.
+    await Wallet.findOneAndUpdate(
+      { user: transaction.user },
+      { 
+        $inc: {
+          pendingCashback: -transaction.amount,
+        }
+      }
+    );
+    
+    // Log activity
+    const activity = new Activity({
+      type: 'transaction',
+      message: `Admin ${req.user.id} rejected cashback of ${transaction.amount} for user ${transaction.user}. Reason: ${rejectionReason || 'N/A'}`,
+      user: req.user.id
+    });
+    await activity.save();
+
+
+    res.json({ message: 'Transaction rejected and removed from pending balance.', transaction });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @route   POST /api/admin/wallet/add-cashback
+// @desc    Manually add confirmed cashback to a user's wallet
+// @access  Admin
+exports.manuallyAddCashback = async (req, res) => {
+    try {
+        const { userId, amount, description } = req.body;
+
+        if (!userId || !amount || amount <= 0 || !description) {
+            return res.status(400).json({ message: 'User ID, positive amount, and description are required' });
+        }
+        
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // 1. Update wallet: directly add to available and total cashback
+        const wallet = await Wallet.findOneAndUpdate(
+            { user: userId },
+            { 
+                $inc: {
+                    availableCashback: amount,
+                    totalCashback: amount,
+                }
+            },
+            { new: true, upsert: true } // Upsert ensures wallet exists if not found
+        );
+
+        // 2. Create a confirmed transaction for the record
+        const newTransaction = new Transaction({
+            user: userId,
+            amount: amount,
+            type: 'credit',
+            status: 'confirmed',
+            description: `Manual Admin Credit: ${description}`,
+        });
+        await newTransaction.save();
+
+        // Log activity
+        const activity = new Activity({
+          type: 'transaction',
+          message: `Admin ${req.user.id} manually added ${amount} cashback to user ${userId} wallet.`,
+          user: req.user.id
+        });
+        await activity.save();
+
+
+        res.status(201).json({ 
+            message: 'Cashback added successfully', 
+            wallet, 
+            transaction: newTransaction 
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };

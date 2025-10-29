@@ -58,4 +58,9 @@ router.get('/support/tickets/:id', adminController.getSupportTicketById);
 router.patch('/support/tickets/:id', adminController.updateSupportTicket);
 router.post('/support/tickets/:id/messages', adminController.addSupportTicketMessage);
 
+router.get('/transactions/pending', adminController.getPendingTransactions);
+router.post('/transactions/:id/approve', adminController.approveTransaction);
+router.post('/transactions/:id/reject', adminController.rejectTransaction);
+router.post('/wallet/add-cashback', adminController.manuallyAddCashback);
+
 module.exports = router;
