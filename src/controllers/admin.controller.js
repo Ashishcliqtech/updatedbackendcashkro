@@ -554,3 +554,72 @@ exports.getAllClicks = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @route   POST /api/admin/wallet/update
+// @desc    Manually update a user's wallet balance
+// @access  Admin
+exports.updateUserWallet = async (req, res) => {
+    try {
+        const { userId, amount, description } = req.body;
+
+        if (!userId || !amount || !description) {
+            return res.status(400).json({ message: 'User ID, amount, and description are required' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Determine transaction type based on amount
+        const transactionType = amount > 0 ? 'credit' : 'debit';
+
+        // 1. Update wallet
+        const wallet = await Wallet.findOneAndUpdate(
+            { user: userId },
+            {
+                $inc: {
+                    availableCashback: amount,
+                    totalCashback: transactionType === 'credit' ? amount : 0, // Only increase total cashback on credit
+                }
+            },
+            { new: true, upsert: true }
+        );
+
+        // 2. Create a transaction for the record
+        const newTransaction = new Transaction({
+            user: userId,
+            amount: Math.abs(amount),
+            type: transactionType,
+            status: 'confirmed',
+            description: `Manual Admin Update: ${description}`,
+        });
+        await newTransaction.save();
+
+        // 3. Create and send a notification to the user
+        const notificationData = {
+            recipient: userId,
+            title: `Your wallet has been updated`,
+            message: `Your wallet balance has been adjusted by ${amount.toFixed(2)}. Reason: ${description}`,
+            type: 'wallet'
+        };
+        await req.notificationService.createNotification(notificationData);
+
+        // 4. Log activity
+        const activity = new Activity({
+          type: 'wallet',
+          message: `Admin ${req.user.id} updated wallet for user ${userId} by ${amount}.`,
+          user: req.user.id
+        });
+        await activity.save();
+
+        res.status(200).json({
+            message: 'User wallet updated successfully.',
+            wallet,
+            transaction: newTransaction
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

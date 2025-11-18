@@ -72,6 +72,7 @@ module.exports = (notificationService) => {
     router.post('/transactions/:id/approve', adminController.approveTransaction);
     router.post('/transactions/:id/reject', adminController.rejectTransaction);
     router.post('/wallet/add-cashback', passNotificationService, adminController.manuallyAddCashback);
+    router.post('/wallet/update', passNotificationService, adminController.updateUserWallet);
 
     return router;
 };
