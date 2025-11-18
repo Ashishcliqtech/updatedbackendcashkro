@@ -98,6 +98,24 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+exports.getUserByClickId = async (req, res) => {
+    try {
+        const click = await Click.findOne({ clickId: req.params.clickId });
+        if (!click) {
+            return res.status(404).json({ message: 'Click not found' });
+        }
+
+        const user = await User.findById(click.user).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // --- Store Management ---
 exports.createStore = async (req, res) => {
   try {
@@ -492,6 +510,15 @@ exports.manuallyAddCashback = async (req, res) => {
         });
         await newTransaction.save();
 
+        // 3. Create and send a notification to the user
+        const notificationData = {
+            recipient: userId,
+            title: 'You have received cashback!',
+            message: `You have received ${amount.toFixed(2)} in cashback. Reason: ${description}`,
+            type: 'cashback'
+        };
+        await req.notificationService.createNotification(notificationData);
+
         // Log activity
         const activity = new Activity({
           type: 'transaction',
@@ -502,11 +529,27 @@ exports.manuallyAddCashback = async (req, res) => {
 
 
         res.status(201).json({ 
-            message: 'Cashback added successfully', 
+            message: 'Cashback added successfully and user notified.', 
             wallet, 
-            transaction: newTransaction 
+            transaction: newTransaction
         });
 
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @route   GET /api/admin/clicks
+// @desc    Get all clicks with user information
+// @access  Admin
+exports.getAllClicks = async (req, res) => {
+    try {
+        const clicks = await Click.find()
+            .populate('user', 'name email')
+            .populate('offer', 'title')
+            .populate('store', 'name')
+            .sort({ createdAt: -1 });
+        res.json(clicks);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

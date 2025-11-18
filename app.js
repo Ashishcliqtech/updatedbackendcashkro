@@ -48,6 +48,7 @@ app.use('/api/support', require('./src/routes/support.routes'));
 app.use('/api/health', require('./src/routes/health.routes.js'));
 
 // Admin Routes
-app.use('/api/admin', require('./src/routes/admin.routes'));
+const adminRoutes = require('./src/routes/admin.routes')(notificationService);
+app.use('/api/admin', adminRoutes);
 
 module.exports = { app, server };

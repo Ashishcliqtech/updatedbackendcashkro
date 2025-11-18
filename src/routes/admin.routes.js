@@ -7,60 +7,71 @@ const authMiddleware = require('../middleware/auth.middleware');
 const adminMiddleware = require('../middleware/admin.middleware');
 const upload = require('../middleware/upload.middleware');
 
-// All routes in this file are protected by auth and admin middleware
-router.use(authMiddleware, adminMiddleware);
+module.exports = (notificationService) => {
+    const passNotificationService = (req, res, next) => {
+        req.notificationService = notificationService;
+        next();
+    };
 
-router.get('/stats', adminController.getDashboardStats);
-router.get('/activities', adminController.getRecentActivities);
+    // All routes in this file are protected by auth and admin middleware
+    router.use(authMiddleware, adminMiddleware);
 
-// --- User Management ---
-router.get('/users', adminController.getAllUsers);
-router.get('/users/:id', adminController.getUserById);
-router.put('/users/:id', adminController.updateUser);
-router.delete('/users/:id', adminController.deleteUser);
+    router.get('/stats', adminController.getDashboardStats);
+    router.get('/activities', adminController.getRecentActivities);
 
-const storeUpload = upload.fields([
-  { name: 'logo', maxCount: 1 },
-  { name: 'banner_url', maxCount: 1 }
-]);
+    // --- User Management ---
+    router.get('/users', adminController.getAllUsers);
+    router.get('/users/:id', adminController.getUserById);
+    router.put('/users/:id', adminController.updateUser);
+    router.delete('/users/:id', adminController.deleteUser);
+    router.get('/user/click/:clickId', adminController.getUserByClickId);
 
-// --- Store Management ---
-router.post('/stores', storeUpload, adminController.createStore);
-router.put('/stores/:id', storeUpload, adminController.updateStore);
-router.delete('/stores/:id', adminController.deleteStore);
+    const storeUpload = upload.fields([
+        { name: 'logo', maxCount: 1 },
+        { name: 'banner_url', maxCount: 1 }
+    ]);
 
-// --- Offer Management ---
-router.post('/offers', upload.single('imageUrl'), adminController.createOffer);
-router.put('/offers/:id', upload.single('imageUrl'), adminController.updateOffer);
-router.delete('/offers/:id', adminController.deleteOffer);
+    // --- Store Management ---
+    router.post('/stores', storeUpload, adminController.createStore);
+    router.put('/stores/:id', storeUpload, adminController.updateStore);
+    router.delete('/stores/:id', adminController.deleteStore);
 
-// --- Category Management ---
-router.post('/categories', categoriesController.createCategory);
-router.put('/categories/:id', categoriesController.updateCategory);
-router.delete('/categories/:id', categoriesController.deleteCategory);
+    // --- Offer Management ---
+    router.post('/offers', upload.single('imageUrl'), adminController.createOffer);
+    router.put('/offers/:id', upload.single('imageUrl'), adminController.updateOffer);
+    router.delete('/offers/:id', adminController.deleteOffer);
 
-// --- Content Management ---
-router.post('/content', upload.single('imageUrl'), contentController.createContent);
-router.put('/content/:id', upload.single('imageUrl'), contentController.updateContent);
-router.delete('/content/:id', contentController.deleteContent);
+    // --- Category Management ---
+    router.post('/categories', categoriesController.createCategory);
+    router.put('/categories/:id', categoriesController.updateCategory);
+    router.delete('/categories/:id', categoriesController.deleteCategory);
 
-// --- Notification Management ---
-router.post('/notifications/send', adminController.sendNotification);
-router.get('/notifications/stats', adminController.getNotificationStats);
+    // --- Content Management ---
+    router.post('/content', upload.single('imageUrl'), contentController.createContent);
+    router.put('/content/:id', upload.single('imageUrl'), contentController.updateContent);
+    router.delete('/content/:id', contentController.deleteContent);
 
-// --- Contact Inquiry Management ---
-router.get('/contact-inquiries', adminController.getContactInquiries);
-router.patch('/contact-inquiries/:id', adminController.updateContactInquiry);
+    // --- Notification Management ---
+    router.post('/notifications/send', adminController.sendNotification);
+    router.get('/notifications/stats', adminController.getNotificationStats);
 
-// --- Support Ticket Management ---
-router.get('/support/tickets', adminController.getAllSupportTickets);
-router.get('/support/tickets/:id', adminController.getSupportTicketById);
-router.patch('/support/tickets/:id', adminController.updateSupportTicket);
-router.post('/support/tickets/:id/messages', adminController.addSupportTicketMessage);
+    // --- Contact Inquiry Management ---
+    router.get('/contact-inquiries', adminController.getContactInquiries);
+    router.patch('/contact-inquiries/:id', adminController.updateContactInquiry);
 
-router.get('/transactions/pending', adminController.getPendingTransactions);
-router.post('/transactions/:id/approve', adminController.approveTransaction);
-router.post('/transactions/:id/reject', adminController.rejectTransaction);
-router.post('/wallet/add-cashback', adminController.manuallyAddCashback);
+    // --- Support Ticket Management ---
+    router.get('/support/tickets', adminController.getAllSupportTickets);
+    router.get('/support/tickets/:id', adminController.getSupportTicketById);
+    router.patch('/support/tickets/:id', adminController.updateSupportTicket);
+    router.post('/support/tickets/:id/messages', adminController.addSupportTicketMessage);
 
-module.exports = router;
+    // --- Click Tracking ---
+    router.get('/clicks', adminController.getAllClicks);
+
+    router.get('/transactions/pending', adminController.getPendingTransactions);
+    router.post('/transactions/:id/approve', adminController.approveTransaction);
+    router.post('/transactions/:id/reject', adminController.rejectTransaction);
+    router.post('/wallet/add-cashback', passNotificationService, adminController.manuallyAddCashback);
+
+    return router;
+};
